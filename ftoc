@@ -1,0 +1,10 @@
+#!/usr/local/bin/python3
+
+import argparse
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Fahrenheit to Celsius converter")
+    parser.add_argument("fahrenheit_temp", nargs="+", help="Fahrenheit temp to convert.")
+
+    args = vars(parser.parse_args())
+    print(" ".join(list(map(lambda x: str((float(x)-32)*(5/9)), args.get("fahrenheit_temp")))))
