@@ -1,0 +1,18 @@
+#!/bin/sh
+# Andrew Michaud
+# Sync podcasts to remote server.
+
+if [ -z "$1" ]; then
+    echo "Need HOST"
+    exit 1
+fi
+
+SYNC_COMMAND="rsync -azvh --progress --partial"
+
+printf "Syncing podcasts folder...\n"
+$SYNC_COMMAND "$HOME/music/podcasts" "$1:~/music/"
+printf "Done.\n\n"
+
+printf "Syncing podcast playlist...\n"
+$SYNC_COMMAND "$HOME/music/playlists/pods.m3u" "$1:~/music/playlists/"
+printf "Done.\n\n"
