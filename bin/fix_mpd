@@ -1,0 +1,25 @@
+#!/bin/bash
+# Andrew Michaud
+# Old script to get around weird MPD behavior on delete.
+
+PLAYLIST="pods"
+
+if pgrep -x "mpd"; then
+    mpc pause
+    mpc save "$PLAYLIST"
+
+    killall mpd
+fi
+
+MPD_DIR="$HOME/Library/Caches/mpd"
+FILES=( "$MPD_DIR/database" "$MPD_DIR/state" "$MPD_DIR/sticker.sql" );
+for file in "${FILES[@]}"; do
+    [ -f "$file" ] || rm "$file"
+done
+
+mpd
+
+sleep 2
+
+mpc load "$PLAYLIST"
+mpc play
