@@ -1,0 +1,18 @@
+#!/bin/bash
+# Andrew Michaud
+# Delete something in MPD and make sure the DB reflects that.
+
+if [ -z "$1" ]; then
+    echo "Please provide at least one file to safe delete."
+    exit 1
+fi
+
+for f in "$@"; do
+    echo "Safe deleting $f"
+    rm "$f"
+    touch "$f"
+    sleep 2
+    mpc update
+    sleep 2
+    rm "$f"
+done
