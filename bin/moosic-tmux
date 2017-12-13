@@ -3,8 +3,6 @@
 shopt -s expand_aliases
 source $XDG_CONFIG_HOME/zsh/.zshrc
 
-TMUX_BASE_CMD="tmux -2 -u -f ${XDG_CONFIG_HOME}/tmux/tmux.conf"
-
 SESSION_NAME="moosic"
 
 tmux new-session -d -c "$HOME/music/podcasts" -s "$SESSION_NAME" "ncmpcpp"
