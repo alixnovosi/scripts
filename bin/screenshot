@@ -1,0 +1,25 @@
+#!/bin/bash
+
+PICTURE_HOME=$(xdg-user-dir PICTURES)
+SCREENSHOT_HOME="${PICTURE_HOME}/screenshots/%FT%TZ%z.png"
+
+if [[ -z "$1" ]]; then
+    scrot "${SCREENSHOT_HOME}"
+
+elif [[ "$1" = "select" ]]; then
+    sleep 0.1
+    scrot "${SCREENSHOT_HOME}" --select
+
+elif [[ "$1" = "delay" ]]; then
+
+    if [[ -z "$2" ]]; then
+        DELAY=5
+    else
+        DELAY="$2"
+    fi
+
+    scrot "${SCREENSHOT_HOME}" --delay "${DELAY}"
+else
+    echo "unknown command $1"
+    exit 1
+fi
