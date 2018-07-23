@@ -1,0 +1,34 @@
+#!/bin/bash
+shopt -s extglob
+
+MUSIC_DIR="$HOME/music"
+CURRENT=$(mpc --format %file% current)
+ALBUM=$(mpc --format %album% current)
+
+DIRECTORY=$(dirname "$MUSIC_DIR/$CURRENT")
+
+# Start by looking for something matching the current album.
+if [ -f "$DIRECTORY/$ALBUM.png" ]; then
+    FILE="$DIRECTORY/$ALBUM.png"
+elif [ -f "$DIRECTORY/$ALBUM.jpg" ]; then
+    FILE="$DIRECTORY/$ALBUM.jpg"
+else
+    # Fall back to just grabbing any picture in the folder.
+    FILES=("$DIRECTORY/"*.png)
+    FILE="${FILES[0]}"
+
+    if [ ! -f "$FILE" ]; then
+        FILES=("$DIRECTORY/"*.jpg)
+        FILE="${FILES[0]}"
+    fi
+fi
+
+echo "Setting iTerm background to $FILE"
+
+osascript <<EOD
+tell application "iTerm2"
+    tell current session of current window
+        set background image to "$FILE"
+    end tell
+end tell
+EOD
