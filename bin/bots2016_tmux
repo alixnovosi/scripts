@@ -1,0 +1,30 @@
+#!/bin/bash
+
+SESSION_NAME="bots2016"
+GIT_ROOT="$HOME/src/git"
+
+BOTS=(\
+"dirtyunix_bot" \
+"randweather_bot" \
+"weatherlies_bot" \
+"isthisska_bot" \
+"goties_bot" \
+)
+
+if [ ! -z ${TMUX+x} ]; then
+    echo "Please exit tmux session before running this, for safety."
+    exit 1
+fi
+
+if tmux has-session -t "$SESSION_NAME" &> /dev/null; then
+    echo "Session $SESSION_NAME already exists."
+    exit 1
+fi
+
+tmux new-session -d -c "$GIT_ROOT" -s "$SESSION_NAME" -n "htop" "htop"
+
+for BOT in "${BOTS[@]}"; do
+    BOT_HOME="$GIT_ROOT/$BOT"
+    tmux new-window -d -c "$BOT_HOME" -n "$BOT" "tail -f $BOT_HOME/$BOT/SECRETS/log"
+    tmux split-window -d -v -c "$BOT_HOME" -t "$BOT" "zsh"
+done
