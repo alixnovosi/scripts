@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 SESSION_NAME="bots2017"
 GIT_ROOT="$HOME/src/git"
