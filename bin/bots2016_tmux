@@ -25,6 +25,11 @@ tmux new-session -d -c "$GIT_ROOT" -s "$SESSION_NAME" -n "htop" "htop"
 
 for BOT in "${BOTS[@]}"; do
     BOT_HOME="$GIT_ROOT/$BOT"
-    tmux new-window -d -c "$BOT_HOME" -n "$BOT" "tail -f $BOT_HOME/$BOT/SECRETS/log"
+    LOG_PATH="$BOT_HOME/$BOT/SECRETS/log"
+
+    # ensure log exists.
+    touch "$LOG_PATH"
+
+    tmux new-window -d -c "$BOT_HOME" -n "$BOT" "tail -f $LOG_PATH"
     tmux split-window -d -v -c "$BOT_HOME" -t "$BOT" "zsh"
 done
