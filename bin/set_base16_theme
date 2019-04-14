@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+if [ ! -z "$1" ]; then
+    COLORSCHEME="$1"
+else
+    COLORSCHEME="base16-default"
+fi
+
+# ensure theme is a full base16-XXXX string, so URLs work
+if [[ ! $COLORSCHEME =~ base16- ]]; then
+    COLORSCHEME="base16-$COLORSCHEME"
+fi
+
+echo "received theme '$COLORSCHEME'"
+
+if [ ! -z "$XDG_CONFIG_HOME" ]; then
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        XDG_CONFIG_HOME="$HOME/Library/Preferences"
+    else
+        XDG_CONFIG_HOME="$HOME/.config"
+    fi
+fi
+# just in case
+mkdir -p "$XDG_CONFIG_HOME"
+
+echo "writing xresources file from theme..."
+
+# source or retrieve xresources
+# cached file or freshly fetched file
+XR_FILENAME="$COLORSCHEME-256.Xresources"
+XR_FULLPATH="$XDG_CONFIG_HOME/xresources/$XR_FILENAME"
+XR_CURRENT="$XDG_CONFIG_HOME/xresources/xresources-current"
+
+if [ -f "$XR_FULLPATH" ]; then
+    ln -f -s "$XR_FULLPATH" "$XR_CURRENT"
+    xrdb "$XR_CURRENT"
+
+else
+    mkdir -p "$XDG_CONFIG_HOME/xresources"
+    URL_BASE="https://raw.githubusercontent.com/chriskempson/base16-xresources/master"
+    URL="$URL_BASE/xresources/$XR_FILENAME"
+
+    # check for presence - also checking for valid theme
+    if curl --output /dev/null --silent --head --fail "$URL"; then
+        curl "$URL" --silent > "$XR_FULLPATH"
+        ln -f -s "$XR_FULLPATH" "$XR_CURRENT"
+        xrdb "$XR_CURRENT"
+    else
+        echo "Failed to curl theme $COLORSCHEME, invalid theme."
+        exit 1
+    fi
+fi
+
+# to work for i3,
+# this requires set_from_resources lines in your config -
+# see github.com/alixnovosi/config/blob/master/config/i3/config
+echo "reloading i3..."
+i3 reload &> /dev/null
+
+# set neovim theme
+echo "setting neovim from theme..."
+echo "colorscheme ${COLORSCHEME}" > "$XDG_CONFIG_HOME/nvim/theme.vim"
