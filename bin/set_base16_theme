@@ -46,7 +46,7 @@ else
         ln -f -s "$XR_FULLPATH" "$XR_CURRENT"
         xrdb "$XR_CURRENT"
     else
-        echo "Failed to curl theme $COLORSCHEME, invalid theme."
+        echo "failed to curl theme $COLORSCHEME, invalid theme"
         exit 1
     fi
 fi
@@ -60,3 +60,29 @@ i3 reload &> /dev/null
 # set neovim theme
 echo "setting neovim from theme..."
 echo "colorscheme ${COLORSCHEME}" > "$XDG_CONFIG_HOME/nvim/theme.vim"
+
+echo "setting shell/tmux theme..."
+# source or retrieve shell script to config shell
+# again, either cached file or freshly fetched file
+SHELL_FILENAME="$COLORSCHEME.sh"
+SHELL_FULLPATH="$XDG_CONFIG_HOME/base16-shell/$SHELL_FILENAME"
+SHELL_CURRENT="$XDG_CONFIG_HOME/base16-shell/shell-current.sh"
+
+if [ -f "$SHELL_FULLPATH" ]; then
+    ln -f -s "$SHELL_FULLPATH" "$SHELL_CURRENT"
+else
+    mkdir -p "$XDG_CONFIG_HOME/base16-shell"
+    URL_BASE="https://raw.githubusercontent.com/chriskempson/base16-shell/master"
+    URL="$URL_BASE/scripts/$SHELL_FILENAME"
+
+    # check for presence - also checking for valid theme
+    if curl --output /dev/null --silent --head --fail "$URL"; then
+        curl "$URL" --silent > "$SHELL_FULLPATH"
+        ln -f -s "$SHELL_FULLPATH" "$SHELL_CURRENT"
+    else
+        echo "failed to curl theme $COLORSCHEME- invalid theme for shell but not xresources?"
+        exit 1
+    fi
+fi
+# shellcheck source=/dev/null
+source "$SHELL_CURRENT"
