@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+
+import argparse
+import datetime
+import subprocess
+
+# I've found audio tracks on most movies to be at this sampling frequency.
+SAMPLING_FREQUENCY = 48000  # Hz
+
+# 64k per channel.
+BITRATE = "128k"
+
+def extract(*, video, output, track_index):
+    """Extract audio track from video file to specified output file as stereo track."""
+    commands = ["ffmpeg", "-i", video, "-map", f"0:a:{track_index}",
+                "-vol", "64", "-af",
+                "pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR",
+                output,
+                ]
+    subprocess.run(commands)
+
+def align(*, input_filename, cut_timestamp, align_timestamp, output_filename=None):
+    """
+    Align an audio file with a second target audio file. Do this by trimming the input file so that
+    it starts at the first provided timestamp, and then padding it so it matches the second
+    provided timestamp. This is meant to start the content you care about in the input file at the
+    same time as the target time in the second file.
+    Timestamp MUST be specified as HH:MM:SS.mmm.
+    """
+    if output_filename == None:
+        input_split = input_filename.rsplit(".", 1)
+        output_filename = f"{input_split[0]}.aligned.{input_split[1]}"
+
+    # need to convert second timestamp to milliseconds.
+    # we're hacking timestamps here by just putting milliseconds in as microseconds,
+    # because python doesn't seem to support milliseconds in the timestamp,
+    # so we just get them out the same way.
+    align_millis = (align_timestamp.hour * 3600 * 1000) + \
+        (align_timestamp.minute * 60 * 1000) + \
+        (align_timestamp.second * 1000) + \
+        align_timestamp.microsecond
+
+    cut_timestamp_str = cut_timestamp.strftime("%H:%M:%S.%f")[:12]
+
+    commands = ["ffmpeg",
+                "-ss", cut_timestamp_str,
+                "-i", input_filename,
+                "-map", "0:a:0",
+                "-filter_complex", f"adelay={align_millis}|{align_millis}",
+                "-ar", f"{SAMPLING_FREQUENCY}",
+                output_filename]
+
+    subprocess.run(commands)
+
+def amerge(*, filename_one, filename_two, output_filename):
+    """
+    Merge two tracks together.
+    Finished track will be as long as the first track.
+    """
+    commands = ["ffmpeg",
+                "-i", filename_one,
+                "-i", filename_two,
+                "-filter_complex", "amix=inputs=2:duration=first",
+                "-ac", "2",
+                "-b:a", f"{BITRATE}",
+                output_filename]
+
+    subprocess.run(commands)
+
+def run(args):
+    """Attempt to run named command."""
+    step = args.process_step
+
+    if step == "extract":
+        extract(video=args.VIDEO, output=args.OUTPUT, track_index=args.track_index)
+
+    elif step == "align":
+        align(input_filename=args.INPUT_FILENAME,
+              cut_timestamp=args.CUT_TIMESTAMP,
+              align_timestamp=args.ALIGN_TIMESTAMP,
+              output_filename=args.output_filename,
+              )
+
+    elif step == "amerge":
+        amerge(filename_one=args.FILENAME_ONE,
+               filename_two=args.FILENAME_TWO,
+               output_filename=args.OUTPUT_FILENAME,
+               )
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run ffmpeg commands to mux additional audio track.")
+
+    subparsers = parser.add_subparsers()
+    subparsers.required = True
+    subparsers.dest = "process_step"
+    subparsers.help = "process_step help"
+
+    extract_step = subparsers.add_parser(
+        "extract",
+        help="extract soundtrack as stereo track without rencoding",
+    )
+    extract_step.add_argument("VIDEO",
+                              type=str,
+                              help="video file to extract from",
+                              )
+    extract_step.add_argument("OUTPUT",
+                              type=str,
+                              help=("file to export audio to. ffmpeg will choose encoder based on "
+                                    "extension, so provide it"),
+                              )
+    extract_step.add_argument("--track-index",
+                              type=int,
+                              help="index of target audio track - defaults to 0",
+                              default=0,
+                              )
+
+    align_step = subparsers.add_parser(
+        "align",
+        help="align audio track to second audio track",
+    )
+    align_step.add_argument("INPUT_FILENAME",
+                            type=str,
+                            help="input file to align",
+                            )
+    align_step.add_argument("CUT_TIMESTAMP",
+                            type=valid_ffmpeg_timestamp,
+                            help="timestamp to trim to in input file",
+                            )
+    align_step.add_argument("ALIGN_TIMESTAMP",
+                            type=valid_ffmpeg_timestamp,
+                            help="timestamp to pad input file to align it",
+                            )
+    align_step.add_argument("--output-filename",
+                            type=str,
+                            help=("output filename for aligned file - default is based on input "
+                                  "filename. ffmpeg will choose encoder based on extension, "
+                                  "so provide it"),
+                            )
+
+    amerge_step = subparsers.add_parser(
+        "amerge",
+        help="merge two audio tracks into one final one",
+    )
+    amerge_step.add_argument("FILENAME_ONE",
+                             type=str,
+                             help="first file to merge",
+                             )
+    amerge_step.add_argument("FILENAME_TWO",
+                             type=str,
+                             help="second file to merge",
+                             )
+    amerge_step.add_argument("OUTPUT_FILENAME",
+                             type=str,
+                             help=("output filename for merged file. "
+                                  "ffmpeg will choose encoder based on extension, so provide it."),
+                             )
+
+    args = parser.parse_args()
+
+    run(args)
+
+
+def valid_ffmpeg_timestamp(timestamp):
+    """Validate timestamp is of form HH:MM:SS.mmm."""
+    try:
+        return datetime.datetime.strptime(timestamp, "%H:%M:%S.%f")
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Date {timestamp} formatted incorrectly. "
+            f"Should be '%H:%M:%S.%f'.")
+
+
+if __name__ == "__main__":
+    main()
