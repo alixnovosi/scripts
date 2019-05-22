@@ -12,11 +12,14 @@ BITRATE = "128k"
 
 def extract(*, video, output, track_index):
     """Extract audio track from video file to specified output file as stereo track."""
-    commands = ["ffmpeg", "-i", video, "-map", f"0:a:{track_index}",
-                "-vol", "64", "-af",
-                "pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR",
-                output,
-                ]
+    commands = [
+        "ffmpeg",
+        "-i", video,
+        "-map", f"0:a:{track_index}",
+        "-vol", "64",
+        "-af", "pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR",
+        output,
+    ]
     subprocess.run(commands)
 
 def align(*, input_filename, cut_timestamp, align_timestamp, output_filename=None):
@@ -42,29 +45,70 @@ def align(*, input_filename, cut_timestamp, align_timestamp, output_filename=Non
 
     cut_timestamp_str = cut_timestamp.strftime("%H:%M:%S.%f")[:12]
 
-    commands = ["ffmpeg",
-                "-ss", cut_timestamp_str,
-                "-i", input_filename,
-                "-map", "0:a:0",
-                "-filter_complex", f"adelay={align_millis}|{align_millis}",
-                "-ar", f"{SAMPLING_FREQUENCY}",
-                output_filename]
+    commands = [
+        "ffmpeg",
+        "-ss", cut_timestamp_str,
+        "-i", input_filename,
+        "-map", "0:a:0",
+        "-filter_complex", f"adelay={align_millis}|{align_millis}",
+        "-ar", f"{SAMPLING_FREQUENCY}",
+        output_filename
+    ]
 
     subprocess.run(commands)
 
-def amerge(*, filename_one, filename_two, output_filename):
+def amerge(*, filename_one, filename_two, output_filename, language=None, title=None, codec=None):
     """
-    Merge two tracks together.
+    Merge two tracks together into an audio-only mkv container.
     Finished track will be as long as the first track.
+    Optionally specify language tag and title.
     """
-    commands = ["ffmpeg",
-                "-i", filename_one,
-                "-i", filename_two,
-                "-filter_complex", "amix=inputs=2:duration=first",
-                "-ac", "2",
-                "-b:a", f"{BITRATE}",
-                output_filename]
+    if codec is None:
+        codec = "aac"
 
+    commands = [
+        "ffmpeg",
+        "-i", filename_one,
+        "-i", filename_two,
+        "-filter_complex", "amix=inputs=2:duration=first",
+        "-ac", "2",
+        "-c:a", codec,
+        "-b:a", f"{BITRATE}",
+        "-disposition:a:0", "none",
+    ]
+
+    if language is not None:
+        commands.extend([
+            "-metadata:s:a:0", f"language={language}",
+        ])
+
+    if title is not None:
+        commands.extend([
+            "-metadata:s:a:0", f"title={title}",
+        ])
+
+    commands.extend([
+        f"{output_filename}.mkv"
+    ])
+
+    subprocess.run(commands)
+
+def commentarymux(
+        *,
+        commentary_filename,
+        container_filename,
+        output_filename,
+):
+    """Add a commentary track to an existing container, producing a new output file."""
+    commands = [
+        "ffmpeg",
+        "-i", container_filename,
+        "-i", commentary_filename,
+        "-c", "copy",
+        "-map", "0:v", "-map", "0:a", "-map", "1:a", "-map", "0:s",
+        "-ac", "2",
+        output_filename
+    ]
     subprocess.run(commands)
 
 def run(args):
@@ -75,17 +119,28 @@ def run(args):
         extract(video=args.VIDEO, output=args.OUTPUT, track_index=args.track_index)
 
     elif step == "align":
-        align(input_filename=args.INPUT_FILENAME,
-              cut_timestamp=args.CUT_TIMESTAMP,
-              align_timestamp=args.ALIGN_TIMESTAMP,
-              output_filename=args.output_filename,
-              )
+        align(
+            input_filename=args.INPUT_FILENAME,
+            cut_timestamp=args.CUT_TIMESTAMP,
+            align_timestamp=args.ALIGN_TIMESTAMP,
+            output_filename=args.output_filename,
+        )
 
     elif step == "amerge":
-        amerge(filename_one=args.FILENAME_ONE,
-               filename_two=args.FILENAME_TWO,
-               output_filename=args.OUTPUT_FILENAME,
-               )
+        amerge(
+            filename_one=args.FILENAME_ONE,
+            filename_two=args.FILENAME_TWO,
+            output_filename=args.OUTPUT_FILENAME,
+            language=args.language,
+            title=args.title,
+        )
+
+    elif step == "commentarymux":
+        commentarymux(
+            commentary_filename=args.COMMENTARY_FILENAME,
+            container_filename=args.CONTAINER_FILENAME,
+            output_filename=args.OUTPUT_FILENAME,
+        )
 
 def main():
     parser = argparse.ArgumentParser(
@@ -100,61 +155,110 @@ def main():
         "extract",
         help="extract soundtrack as stereo track without rencoding",
     )
-    extract_step.add_argument("VIDEO",
-                              type=str,
-                              help="video file to extract from",
-                              )
-    extract_step.add_argument("OUTPUT",
-                              type=str,
-                              help=("file to export audio to. ffmpeg will choose encoder based on "
-                                    "extension, so provide it"),
-                              )
-    extract_step.add_argument("--track-index",
-                              type=int,
-                              help="index of target audio track - defaults to 0",
-                              default=0,
-                              )
+    extract_step.add_argument(
+        "VIDEO",
+        type=str,
+        help="video file to extract from",
+    )
+    extract_step.add_argument(
+        "OUTPUT",
+        type=str,
+        help=("file to export audio to. ffmpeg will choose encoder based on "
+              "extension, so provide it"),
+    )
+    extract_step.add_argument(
+        "--track-index",
+        type=int,
+        help="index of target audio track - defaults to 0",
+        default=0,
+    )
 
     align_step = subparsers.add_parser(
         "align",
         help="align audio track to second audio track",
     )
-    align_step.add_argument("INPUT_FILENAME",
-                            type=str,
-                            help="input file to align",
-                            )
-    align_step.add_argument("CUT_TIMESTAMP",
-                            type=valid_ffmpeg_timestamp,
-                            help="timestamp to trim to in input file",
-                            )
-    align_step.add_argument("ALIGN_TIMESTAMP",
-                            type=valid_ffmpeg_timestamp,
-                            help="timestamp to pad input file to align it",
-                            )
-    align_step.add_argument("--output-filename",
-                            type=str,
-                            help=("output filename for aligned file - default is based on input "
-                                  "filename. ffmpeg will choose encoder based on extension, "
-                                  "so provide it"),
-                            )
+    align_step.add_argument(
+        "INPUT_FILENAME",
+        type=str,
+        help="input file to align",
+    )
+    align_step.add_argument(
+        "CUT_TIMESTAMP",
+        type=valid_ffmpeg_timestamp,
+        help="timestamp to trim to in input file",
+    )
+    align_step.add_argument(
+        "ALIGN_TIMESTAMP",
+        type=valid_ffmpeg_timestamp,
+        help="timestamp to pad input file to align it",
+    )
+    align_step.add_argument(
+        "--output-filename",
+        type=str,
+        help=("output filename for aligned file - default is based on input filename. "
+              "ffmpeg will choose encoder based on extension, so provide it"),
+    )
 
     amerge_step = subparsers.add_parser(
         "amerge",
         help="merge two audio tracks into one final one",
     )
-    amerge_step.add_argument("FILENAME_ONE",
-                             type=str,
-                             help="first file to merge",
-                             )
-    amerge_step.add_argument("FILENAME_TWO",
-                             type=str,
-                             help="second file to merge",
-                             )
-    amerge_step.add_argument("OUTPUT_FILENAME",
-                             type=str,
-                             help=("output filename for merged file. "
-                                  "ffmpeg will choose encoder based on extension, so provide it."),
-                             )
+    amerge_step.add_argument(
+        "FILENAME_ONE",
+         type=str,
+         help="first file to merge",
+    )
+    amerge_step.add_argument(
+        "FILENAME_TWO",
+         type=str,
+         help="second file to merge",
+    )
+    amerge_step.add_argument(
+        "OUTPUT_FILENAME",
+         type=str,
+         help=("output filename for merged file. "
+              "ffmpeg will choose encoder based on extension, so provide it."),
+    )
+    amerge_step.add_argument(
+        "--language",
+        type=str,
+        help="language tag for output audio track",
+        default=None,
+    )
+    amerge_step.add_argument(
+        "--title",
+        type=str,
+        help="title for output audio track",
+        default=None,
+    )
+    amerge_step.add_argument(
+        "--codec",
+        type=str,
+        help="codec for audio track of output mkv container. default: aac",
+        default=None,
+    )
+
+    commentarymux_step = subparsers.add_parser(
+        "commentarymux",
+        help=("add a commentary file to a container with existing video, audio, and subtitle "
+              "tracks, creating a new final file"),
+    )
+    commentarymux_step.add_argument(
+        "COMMENTARY_FILENAME",
+        type=str,
+        help="commentary file to add to container (commentary.aac)",
+    )
+    commentarymux_step.add_argument(
+        "CONTAINER_FILENAME",
+        type=str,
+        help="name of container (feature_film.mkv)",
+    )
+    commentarymux_step.add_argument(
+        "OUTPUT_FILENAME",
+        type=str,
+        help=("output filename for merged file. "
+              "ffmpeg will choose encoder based on extension, so provide it."),
+    )
 
     args = parser.parse_args()
 
@@ -164,11 +268,15 @@ def main():
 def valid_ffmpeg_timestamp(timestamp):
     """Validate timestamp is of form HH:MM:SS.mmm."""
     try:
+        # %f means microseconds,
+        # but if we pass milliseconds in as microseconds,
+        # it should be fine.
         return datetime.datetime.strptime(timestamp, "%H:%M:%S.%f")
     except ValueError:
         raise argparse.ArgumentTypeError(
             f"Date {timestamp} formatted incorrectly. "
-            f"Should be '%H:%M:%S.%f'.")
+            f"Should be '%H:%M:%S.%f'."
+        )
 
 
 if __name__ == "__main__":
