@@ -3,7 +3,7 @@
 # AUTHOR:  Andrew Michaud - https://andrewmichaud.com                                             #
 # FILE:    setup                                                                                  #
 # PURPOSE: script to deploy config files and scripts in this repo.                                #
-# UPDATED: 2016-06-22                                                                             #
+# UPDATED: 2018-05-28                                                                             #
 # LICENSE: ISC                                                                                    #
 #-------------------------------------------------------------------------------------------------#
 
@@ -22,7 +22,7 @@ OS="$(uname -s)"
 if [ "$OS" = "Darwin" ]; then
     DEFAULT_DATA="$HOME/Library"
 
-elif [ "$OS" = "Linux" ]; then
+elif [ "$OS" = "Linux" ] || [ "$OS" = "FreeBSD" ]; then
     DEFAULT_DATA="$HOME/.local/share"
 
 else
