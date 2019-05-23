@@ -84,7 +84,6 @@ def identify_audio(*, video_filename):
 
             channels = line.split(",")[2].strip()
 
-            print(f"{line}")
             identified_audio.append(f"Stream: {index}, Lang: {lang}, Codec: {codec}, "
                                     f"Channels: {channels}")
 
