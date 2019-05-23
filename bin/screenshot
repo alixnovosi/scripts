@@ -4,11 +4,11 @@ PICTURE_HOME=$(xdg-user-dir PICTURES)
 SCREENSHOT_HOME="${PICTURE_HOME}/screenshots/%FT%TZ%z.png"
 
 if [[ -z "$1" ]]; then
-    scrot "${SCREENSHOT_HOME}"
+    scrot "${SCREENSHOT_HOME}" --silent
 
 elif [[ "$1" = "select" ]]; then
     sleep 0.1
-    scrot "${SCREENSHOT_HOME}" --select
+    scrot "${SCREENSHOT_HOME}" --select --silent
 
 elif [[ "$1" = "delay" ]]; then
 
@@ -18,7 +18,7 @@ elif [[ "$1" = "delay" ]]; then
         DELAY="$2"
     fi
 
-    scrot "${SCREENSHOT_HOME}" --delay "${DELAY}"
+    scrot "${SCREENSHOT_HOME}" --delay "${DELAY}" --silent
 else
     echo "unknown command $1"
     exit 1

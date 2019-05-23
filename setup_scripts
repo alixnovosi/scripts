@@ -1,9 +1,9 @@
 #!/bin/sh
 #-------------------------------------------------------------------------------------------------#
-# AUTHOR:  Andrew Michaud - https://andrewmichaud.com                                             #
+# AUTHOR:  Andrew Michaud - https://drew.life                                                     #
 # FILE:    setup                                                                                  #
 # PURPOSE: script to deploy config files and scripts in this repo.                                #
-# UPDATED: 2018-05-28                                                                             #
+# UPDATED: 2019-05-22                                                                             #
 # LICENSE: ISC                                                                                    #
 #-------------------------------------------------------------------------------------------------#
 

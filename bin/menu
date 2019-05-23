@@ -1,10 +1,10 @@
 #!/bin/sh
 #-------------------------------------------------------------------------------------------------#
-# author:  andrew michaud - https://andrewmichaud.com                                             #
-# file:    menu                                                                                   #
-# purpose: file for choosing things with dmenu                                                    #
-# updated: 2017-12-22                                                                             #
-# license: isc                                                                                    #
+# AUTHOR:  Andrew Michaud - https://drew.life                                                     #
+# FILE:    menu                                                                                   #
+# PURPOSE: script for choosing things with dmenu                                                  #
+# UPDATED: 2019-05-22                                                                             #
+# LICENSE: ISC                                                                                    #
 #-------------------------------------------------------------------------------------------------#
 # choose something with dmenu. takes prefix and regex and type.
 choose () {

@@ -1,9 +1,9 @@
 #!/bin/sh
 #-------------------------------------------------------------------------------------------------#
-# AUTHOR:  Andrew Michaud - https://andrewmichaud.com                                             #
+# AUTHOR:  Andrew Michaud - https://drew.life                                                     #
 # FILE:    index                                                                                  #
-# PURPOSE: Script to index directories and record their files.                                    #
-# UPDATED: 2015-05-02                                                                             #
+# PURPOSE: script to index directories and record their files.                                    #
+# UPDATED: 2019-05-22                                                                             #
 # LICENSE: ISC                                                                                    #
 #-------------------------------------------------------------------------------------------------#
 usage () {

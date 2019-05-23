@@ -1,10 +1,10 @@
 #!/bin/sh
 #-------------------------------------------------------------------------------------------------#
-# author:  andrew michaud - https://andrewmichaud.com                                             #
+# author:  Andrew Michaud - https://drew.life                                                     #
 # file:    set_wallpaper                                                                          #
 # purpose: script to set wallpaper with feh with some randomness                                  #
-# updated: 2017-12-22                                                                             #
-# license: isc                                                                                    #
+# updated: 2019-05-22                                                                             #
+# license: ISC                                                                                    #
 #-------------------------------------------------------------------------------------------------#
 if [ "$(pgrep -c Xorg)" = 0 ]; then
     echo "Need X!"
