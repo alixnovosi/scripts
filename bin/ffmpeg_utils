@@ -30,7 +30,7 @@ def run(args):
     command = args.command
 
     if command == "gif":
-        gif(video=args.VIDEO, sclae=args.scale, fps=args.fps)
+        gif(video=args.VIDEO, scale=args.scale, fps=args.fps)
 
 def main():
     parser = argparse.ArgumentParser(
