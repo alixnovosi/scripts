@@ -14,13 +14,13 @@ def gif(*, video, scale, fps):
         "-v", "warning",
         "-i", video,
         "-vf", f"fps={fps},scale=-1:{scale}:flags=lanczos,palettegen",
-        "-y", "/tmp/palette.png",
+        "-y", PALETTE_LOCATION,
     ])
     subprocess.run([
         "ffmpeg",
         "-v", "warning",
         "-i", video,
-        "-i", "/tmp/palette.png",
+        "-i", PALETTE_LOCATION,
         "-lavfi", f"fps={fps},scale=-1:{scale}:flags=lanczos [x]; [x][1:v] paletteuse",
         "-y", f"{video}.gif",
     ])
