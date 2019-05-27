@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+
+import argparse
+import datetime
+import subprocess
+
+def gif(*, video, scale, fps):
+    """make GIF of input video."""
+
+    PALETTE_LOCATION = "/tmp/palette.png"
+
+    subprocess.run([
+        "ffmpeg",
+        "-v", "warning",
+        "-i", video,
+        "-vf", f"fps={fps},scale=-1:{scale}:flags=lanczos,palettegen",
+        "-y", "/tmp/palette.png",
+    ])
+    subprocess.run([
+        "ffmpeg",
+        "-v", "warning",
+        "-i", video,
+        "-i", "/tmp/palette.png",
+        "-lavfi", f"fps={fps},scale=-1:{scale}:flags=lanczos [x]; [x][1:v] paletteuse",
+        "-y", f"{video}.gif",
+    ])
+
+def run(args):
+    """Attempt to run named command."""
+    command = args.command
+
+    if command == "gif":
+        gif(video=args.VIDEO, sclae=args.scale, fps=args.fps)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run various ffmpeg utility functions.",
+    )
+
+    subparsers = parser.add_subparsers()
+    subparsers.required = True
+    subparsers.dest = "command"
+    subparsers.help = "command help"
+
+    gif_step = subparsers.add_parser(
+        "gif",
+        help="make GIF of input video",
+    )
+    gif_step.add_argument(
+        "VIDEO",
+        type=str,
+        help="video file to make into GIF",
+    )
+    gif_step.add_argument(
+        "--scale",
+        type=int,
+        help="horizontal pixels of output GIF. default: 720",
+        default=720,
+    )
+    gif_step.add_argument(
+        "--fps",
+        type=int,
+        help="frames per second of output GIF. default: 30",
+        default=30,
+    )
+
+    args = parser.parse_args()
+    run(args)
+
+if __name__ == "__main__":
+    main()
