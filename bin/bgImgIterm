@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 shopt -s extglob
 
 MUSIC_DIR="$HOME/music"

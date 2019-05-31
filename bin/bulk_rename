@@ -15,7 +15,7 @@ def run(args):
     for file in files:
         print(file)
 
-        new_name = input("New name? (leave line empty or only spaces to skip)").strip()
+        new_name = input("New name? (leave line empty or only spaces to skip): ").strip()
 
         if new_name == "":
             print("Skipping...")
