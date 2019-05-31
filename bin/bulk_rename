@@ -19,8 +19,12 @@ def run(args):
 
         if new_name == "":
             print("Skipping...")
+
         else:
-            new_full_name = os.path.join(args.directory, new_name)
+
+            if args.prefix is not None:
+                new_full_name = os.path.join(args.directory, f"{args.prefix}{new_name}")
+
             print(f"Renaming {file} -> {new_full_name}")
             os.rename(file, os.path.join(args.directory, new_full_name))
 
@@ -32,8 +36,15 @@ def main():
     parser.add_argument(
         "--directory",
         type=str,
-        help="Directory to act on. Default is current.",
+        help="Directory to act on. Default: current directory.",
         default=os.getcwd(),
+    )
+
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        help="Prefix to add to each new filename. Default: none.",
+        default=None,
     )
 
     args = parser.parse_args()
