@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+
+def run(args):
+    """run"""
+
+    files = [
+        os.path.join(args.directory, f)
+        for f in os.listdir(args.directory)
+        if os.path.isfile(os.path.join(args.directory, f))
+    ]
+
+    for file in files:
+        print(file)
+
+        new_name = input("New name? (leave line empty or only spaces to skip)").strip()
+
+        if new_name == "":
+            print("Skipping...")
+        else:
+            new_full_name = os.path.join(args.directory, new_name)
+            print(f"Renaming {file} -> {new_full_name}")
+            os.rename(file, os.path.join(args.directory, new_full_name))
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Assist renaming every file in a folder.",
+    )
+
+    parser.add_argument(
+        "--directory",
+        type=str,
+        help="Directory to act on. Default is current.",
+        default=os.getcwd(),
+    )
+
+    args = parser.parse_args()
+    run(args)
+
+if __name__ == "__main__":
+    main()
