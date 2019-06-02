@@ -5,10 +5,10 @@ import datetime
 import os
 import subprocess
 
-def bulk_mkv_copy(*, directory, target_extension):
+def bulk_mkv_copy(*, directory, target_extension, attempt_convert):
     """
-    copy a bunch of files into mkv files.
-    target, if supplied, is the extension you want
+    copy a bunch of files with the target extension into mkv files.
+    copy if attempt_convert is false, otherwise try to convert to aac/h264.
     """
 
     files = sorted([
@@ -24,10 +24,19 @@ def bulk_mkv_copy(*, directory, target_extension):
             file_parts = file.rsplit(".", 1)
             new_file = f"{file_parts[0]}.mkv"
 
+            if attempt_convert:
+                acodec = "aac"
+                vcodec = "h264"
+            else:
+                acodec = "copy"
+                vcodec = "copy"
+
             subprocess.run([
                 "ffmpeg",
                 "-i", file,
                 "-c", "copy",
+                "-c:a", acodec,
+                "-c:v", vcodec,
                 "-map", "0:v",
                 "-map", "0:a",
                 "-map", "0:s?",
@@ -63,7 +72,11 @@ def run(args):
     if command == "gif":
         gif(video=args.VIDEO, scale=args.scale, fps=args.fps)
     elif command == "bulk_mkv_copy":
-        bulk_mkv_copy(directory=args.directory, target_extension=args.TARGET_EXTENSION)
+        bulk_mkv_copy(
+            directory=args.directory,
+            target_extension=args.TARGET_EXTENSION,
+            attempt_convert=args.attempt_convert,
+        )
 
 def main():
     parser = argparse.ArgumentParser(
@@ -84,6 +97,12 @@ def main():
         type=str,
         help="directory to act on. Default: current directory.",
         default=os.getcwd(),
+    )
+    bulk_mkv_copy_step.add_argument(
+        "--attempt_convert",
+        type=bool,
+        help="attempt to convert audio to aac and video to h264",
+        default=False,
     )
     bulk_mkv_copy_step.add_argument(
         "TARGET_EXTENSION",
