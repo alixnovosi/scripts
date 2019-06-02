@@ -33,7 +33,6 @@ def bulk_mkv_copy(*, directory, target_extension):
                 "-map", "0:s?",
                 new_file,
             ])
-            return
 
 
 def gif(*, video, scale, fps):
