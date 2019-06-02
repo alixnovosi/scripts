@@ -126,7 +126,7 @@ def main():
         type=str,
         help=("quality factor to be used in ffmpeg encode. "
               "0-51, 18 being lowest reasonable, ~24 is ffmpeg's default"),
-        default=False,
+        default=None,
     )
 
     gif_step = subparsers.add_parser(
