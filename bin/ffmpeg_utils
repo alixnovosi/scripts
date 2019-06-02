@@ -5,10 +5,11 @@ import datetime
 import os
 import subprocess
 
-def bulk_mkv_copy(*, directory, target_extension, attempt_convert):
+def bulk_mkv_copy(*, directory, target_extension, attempt_convert, crf):
     """
     copy a bunch of files with the target extension into mkv files.
     copy if attempt_convert is false, otherwise try to convert to aac/h264.
+    crf is quality factor to be used for encoding.
     """
 
     files = sorted([
@@ -31,17 +32,27 @@ def bulk_mkv_copy(*, directory, target_extension, attempt_convert):
                 acodec = "copy"
                 vcodec = "copy"
 
-            subprocess.run([
+            command = [
                 "ffmpeg",
                 "-i", file,
                 "-c", "copy",
                 "-c:a", acodec,
                 "-c:v", vcodec,
+            ]
+
+            if crf is not None:
+                command.extend([
+                    "-crf", crf,
+                ])
+
+            command.extend([
                 "-map", "0:v",
                 "-map", "0:a",
                 "-map", "0:s?",
                 new_file,
             ])
+
+            subprocess.run(command)
 
 
 def gif(*, video, scale, fps):
@@ -93,6 +104,11 @@ def main():
         help="bulk copy files to mkv containers",
     )
     bulk_mkv_copy_step.add_argument(
+        "TARGET_EXTENSION",
+        type=str,
+        help="target extension to act on. no default, must be supplied",
+    )
+    bulk_mkv_copy_step.add_argument(
         "--directory",
         type=str,
         help="directory to act on. Default: current directory.",
@@ -105,9 +121,11 @@ def main():
         default=False,
     )
     bulk_mkv_copy_step.add_argument(
-        "TARGET_EXTENSION",
+        "--crf",
         type=str,
-        help="target extension to act on. no default, must be supplied",
+        help=("quality factor to be used in ffmpeg encode. "
+              "0-51, 18 being lowest reasonable, ~24 is ffmpeg's default"),
+        default=False,
     )
 
     gif_step = subparsers.add_parser(
