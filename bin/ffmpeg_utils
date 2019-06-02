@@ -2,7 +2,39 @@
 
 import argparse
 import datetime
+import os
 import subprocess
+
+def bulk_mkv_copy(*, directory, target_extension):
+    """
+    copy a bunch of files into mkv files.
+    target, if supplied, is the extension you want
+    """
+
+    files = sorted([
+        os.path.join(directory, f)
+        for f in os.listdir(directory)
+        if os.path.isfile(os.path.join(directory, f))
+    ])
+
+    for file in files:
+        if file.endswith(target_extension):
+            print(f"Processing {file}...")
+
+            file_parts = file.rsplit(".", 1)
+            new_file = f"{file_parts[0]}.mkv"
+
+            subprocess.run([
+                "ffmpeg",
+                "-i", file,
+                "-c", "copy",
+                "-map", "0:v",
+                "-map", "0:a",
+                "-map", "0:s?",
+                new_file,
+            ])
+            return
+
 
 def gif(*, video, scale, fps):
     """make GIF of input video."""
@@ -31,6 +63,8 @@ def run(args):
 
     if command == "gif":
         gif(video=args.VIDEO, scale=args.scale, fps=args.fps)
+    elif command == "bulk_mkv_copy":
+        bulk_mkv_copy(directory=args.directory, target_extension=args.TARGET_EXTENSION)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -41,6 +75,22 @@ def main():
     subparsers.required = True
     subparsers.dest = "command"
     subparsers.help = "command help"
+
+    bulk_mkv_copy_step = subparsers.add_parser(
+        "bulk_mkv_copy",
+        help="bulk copy files to mkv containers",
+    )
+    bulk_mkv_copy_step.add_argument(
+        "--directory",
+        type=str,
+        help="directory to act on. Default: current directory.",
+        default=os.getcwd(),
+    )
+    bulk_mkv_copy_step.add_argument(
+        "TARGET_EXTENSION",
+        type=str,
+        help="target extension to act on. no default, must be supplied",
+    )
 
     gif_step = subparsers.add_parser(
         "gif",

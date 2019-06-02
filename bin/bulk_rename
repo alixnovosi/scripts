@@ -6,14 +6,14 @@ import os
 def run(args):
     """run"""
 
-    files = [
+    files = sorted([
         os.path.join(args.directory, f)
         for f in os.listdir(args.directory)
         if os.path.isfile(os.path.join(args.directory, f))
-    ]
+    ])
 
     for file in files:
-        print(file)
+        print(f"\n{file}")
 
         new_name = input("New name? (leave line empty or only spaces to skip): ").strip()
 
@@ -24,6 +24,9 @@ def run(args):
 
             if args.prefix is not None:
                 new_full_name = os.path.join(args.directory, f"{args.prefix}{new_name}")
+
+            if args.suffix is not None:
+                new_full_name = f"{new_full_name}{args.suffix}"
 
             print(f"Renaming {file} -> {new_full_name}")
             os.rename(file, os.path.join(args.directory, new_full_name))
@@ -43,7 +46,14 @@ def main():
     parser.add_argument(
         "--prefix",
         type=str,
-        help="Prefix to add to each new filename. Default: none.",
+        help="String to add to the BEGINNING of new filename. Default: none.",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--suffix",
+        type=str,
+        help="String to add to the END of each new filename. Default: none.",
         default=None,
     )
 
