@@ -86,7 +86,7 @@ def run(args):
         bulk_mkv_copy(
             directory=args.directory,
             target_extension=args.TARGET_EXTENSION,
-            attempt_convert=args.attempt-convert,
+            attempt_convert=args.attempt_convert,
             crf=args.crf,
         )
 
@@ -116,7 +116,7 @@ def main():
         default=os.getcwd(),
     )
     bulk_mkv_copy_step.add_argument(
-        "--attempt-convert",
+        "--attempt_convert",
         type=bool,
         help="attempt to convert audio to aac and video to h264",
         default=False,
