@@ -5,6 +5,26 @@ import datetime
 import os
 import subprocess
 
+def gif_to_mkv(*, files):
+    """
+    convert a bunch of GIF files to mkv videos, which will tend to be smaller for the same quality.
+    """
+
+    for file in files:
+
+        print(f"Converting {file} to h264 mkv file...")
+        file_tokens = file.rsplit(".", 1)
+
+        mkv_out = f"{file_tokens[0]}.mkv"
+        subprocess.run([
+            "ffmpeg",
+            "-i", file,
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            mkv_out,
+        ])
+
 def bulk_mkv_copy(*, directory, target_extension, attempt_convert, crf):
     """
     copy a bunch of files with the target extension into mkv files.
@@ -82,12 +102,18 @@ def run(args):
 
     if command == "gif":
         gif(video=args.VIDEO, scale=args.scale, fps=args.fps)
+
     elif command == "bulk_mkv_copy":
         bulk_mkv_copy(
             directory=args.directory,
             target_extension=args.TARGET_EXTENSION,
             attempt_convert=args.attempt_convert,
             crf=args.crf,
+        )
+
+    elif command == "gif_to_mkv":
+        gif_to_mkv(
+            files=args.FILES,
         )
 
 def main():
@@ -99,6 +125,16 @@ def main():
     subparsers.required = True
     subparsers.dest = "command"
     subparsers.help = "command help"
+
+    gif_to_mkv_step = subparsers.add_parser(
+        "gif_to_mkv",
+        help="convert one or more GIF files to h264 mkv videos",
+    )
+    gif_to_mkv_step.add_argument(
+        "FILES",
+        nargs="+",
+        help="file(s) to convert",
+    )
 
     bulk_mkv_copy_step = subparsers.add_parser(
         "bulk_mkv_copy",
