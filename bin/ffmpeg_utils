@@ -14,16 +14,14 @@ def gif_to_mkv(*, files):
     for file in files:
 
         print(f"Converting {file} to h264 mkv file...")
-        file_tokens = file.rsplit(".", 1)
 
-        mkv_out = f"{file_tokens[0]}.mkv"
         subprocess.run([
             "ffmpeg",
             "-i", file,
             "-c:v", "libx264",
             "-pix_fmt", "yuv420p",
             "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-            mkv_out,
+            f"{file}.mkv",
         ])
 
 
