@@ -5,57 +5,99 @@ import datetime
 import json
 import subprocess
 
-# This is a set of commands to let you take a third-party audio commentary of a movie,
-# and add it to your video copy of the movie with a low-volume soundtrack backing it.
+# This is a set of commands to let you take a third-party audio commentary of
+# a movie,
+# and add it to your video copy of the movie,
+# with a low-volume soundtrack backing it.
 # There isn't yet a guided command to walk you through it,
 # so this comment will have to do.
-# This assumes you have access to a command-line and the video/audio manipulator program ffmpeg.
+# This assumes you have access to a command-line,
+# and the video/audio manipulator program ffmpeg.
 #
 # 1) Identify audio tracks.
-# Run 'ffmpeg_commentary_mux identify_audio VIDEO_FILE'.
-# This will list all audio tracks, just the index (beginning at zero), language, codec, and
-# channels.
+#
+# Run:
+# $ ffmpeg_commentary_mux identify_audio VIDEO_FILE
+#
+# This will list selected information for all audio tracks.
+# * the index (indices start at zero),
+# * language,
+# * codec,
+# * channels.
 # You want the stream in your language with the most channels.
 # Remember the index, language, and codec.
 #
 # 2) Extract audio track.
-# Run 'ffmpeg_commentary_mux extract VIDEO_FILE OUTPUT_FILENAME --track-index INDEX'.
-# Output filename can be whatever you like, but it must end in the codec you discovered before.
-# If you know what you're doing, you can specify another extension and ffmpeg will attempt to
-# transcode it for you.
+#
+# Run:
+# $ ffmpeg_commentary_mux extract VIDEO_FILE OUTPUT_FILENAME \
+# --track-index INDEX
+#
+# Output filename can be whatever you like,
+# but it must end in the codec you discovered before.
+# If you know what you're doing,
+# you can specify another extension and ffmpeg will attempt to transcode it
+# for you.
 # Specify the index you discovered in the previous step.
 #
 # 3) Align third-party commentary with movie soundtrack.
-# Before doing this step, you need two timestamps. First find the timestamp in the third-party
-# commentary where the commentary actually starts. Second, find the timestamp in the movie that
-# matches when the commentary begins ("our commentary starts when the Universal logo begins to fade
-# out").
+# Before doing this step,
+# you need two timestamps.
+# First find the timestamp in the third-party commentary where the commentary
+# actually starts.
+# Second,
+# find the timestamp in the movie that matches when the commentary begins
+# ("our commentary starts when the Universal logo begins to fade out").
+#
 # Both timestamps will need to be formatted as
 # "HH:MM:SS.mmm" (hours, minutes, seconds, # milliseconds).
-# You can specify an output filename (--output-filename FOO.aac) if you like.
+# You can specify an output filename
+# (--output-filename FOO.aac)
+# if you like.
 # Otherwise, you'll get INPUT_FILENAME.aligned.INPUT_EXTENSION.
-# Run 'ffmpeg_commentary_mux align COMMENTARY_FILENAME COMMENTARY_TIMESTAMP MOVIE_TIMESTAMP'
+#
+# Run:
+# $ ffmpeg_commentary_mux align COMMENTARY_FILENAME COMMENTARY_TIMESTAMP \
+# MOVIE_TIMESTAMP
 #
 # 4) Merge movie soundtrack with commentary.
-# You'll need to provide the filename of the soundtrack created in step 1, the filename of the
-# third-party commentary, aligned from the previous step, and an output filename.
-# The extension of your output filename will be ignored, as an mkv container will be made.
-# You may add a codec (--codec CODEC) if you want to transcode the final file,
-# a language if you want to change the language tag for the final track (--language English),
-# and a title if you want to change the title for the final track (--title "Commentary Track").
-# Run 'ffmpeg_commentary_mux amerge SOUNDTRACK_FILENAME COMMENTARY_ALIGNED_FILENAME \
-# COMMENTARY_FILENAME [--codec CODEC --language LANGUAGE --title TITLE]'
+# You'll need to provide the filename of the soundtrack created in step 1,
+# the filename of the third-party commentary,
+# aligned from the previous step,
+# and an output filename.
+# The extension of your output filename will be ignored,
+# as an mkv container will be made.
+#
+# You may add a codec
+# (--codec CODEC)
+# if you want to transcode the final file,
+# a language if you want to change the language tag for the final track
+# (--language English),
+#
+# and a title if you want to change the title for the final track
+# (--title "Commentary Track").
+#
+# Run:
+# $ ffmpeg_commentary_mux amerge SOUNDTRACK_FILENAME \
+# COMMENTARY_ALIGNED_FILENAME \
+# COMMENTARY_FILENAME [--codec CODEC] [--language LANGUAGE] [--title TITLE]
 #
 # 5) Add final commentary track to movie.
-# Run 'ffmpeg_commentary_mux CONTAINER_FILENAME COMMENTARY_FILENAME [--output-filename OUTPUT]'
-# Output filename is optional, it'll use CONTAINER_FILENAME.final.CONTAINER_FILENAME_EXTENSION by
-# default
+#
+# Run:
+# $ ffmpeg_commentary_mux CONTAINER_FILENAME COMMENTARY_FILENAME \
+# [--output-filename OUTPUT]
+#
+# Output filename is optional, it'll use
+# CONTAINER_FILENAME.final.CONTAINER_FILENAME_EXTENSION
+# by default
 
 # I've found audio tracks on most movies to be at this sampling frequency.
 SAMPLING_FREQUENCY = 48000  # Hz
 
 # 64k per channel.
 BITRATE = "128k"
+
 
 def identify_audio(*, video_filename):
     """Identify audio tracks and their codecs on a video file."""
@@ -104,8 +146,13 @@ def identify_audio(*, video_filename):
 
     print("".join(identified_audio)[1:])
 
+
 def extract(*, video_filename, output_filename, track_index):
-    """Extract audio track from video file to specified output file as stereo track."""
+    """
+    Extract audio track from video file,
+    to specified output file,
+    as downmixed stereo track.
+    """
 
     commands = [
         "ffmpeg",
@@ -118,6 +165,7 @@ def extract(*, video_filename, output_filename, track_index):
 
     subprocess.run(commands)
 
+
 def align(
         *,
         input_filename,
@@ -127,18 +175,21 @@ def align(
 ):
     """
     Align an audio file with a second target audio file.
-    Do this by trimming the input file so that it starts at the first provided timestamp,
+    Do this by trimming the input file so that it starts at the first provided
+    timestamp,
     and then padding it so it matches the second provided timestamp.
-    This is meant to start the content you care about in the input file at the same time as the
+    This is meant to start the content you care about in the input file at the
+    same time as the
     target time in the second file.
     Timestamp MUST be specified as HH:MM:SS.mmm.
     """
-    if output_filename == None:
+    if output_filename is None:
         input_split = input_filename.rsplit(".", 1)
         output_filename = f"{input_split[0]}.aligned.{input_split[1]}"
 
     # need to convert second timestamp to milliseconds.
-    # we're hacking timestamps here by just putting milliseconds in as microseconds,
+    # we're hacking timestamps here by just putting milliseconds in as
+    # microseconds,
     # because python doesn't seem to support milliseconds in the timestamp,
     # so we just get them out the same way.
     align_millis = (align_timestamp.hour * 3600 * 1000) + \
@@ -166,6 +217,7 @@ def align(
 
     subprocess.run(commands)
 
+
 def amerge(
         *,
         filename_one,
@@ -179,7 +231,8 @@ def amerge(
     Merge two tracks together into an audio-only mkv container,
     using specified audio codec.
     The final track will be present twice in the container,
-    because ffmpeg won't let a sole audio track in a container have no disposition,
+    because ffmpeg won't let a sole audio track in a container
+    have no disposition,
     and if we're adding this track to another container later,
     we want it to have no disposition.
     Finished tracks will be as long as the first track.
@@ -189,7 +242,8 @@ def amerge(
         "ffmpeg",
         "-i", filename_one,
         "-i", filename_two,
-        "-filter_complex", "[0:a:0][1:a:0]amix=inputs=2:duration=first,asplit=2[a][b]",
+        "-filter_complex",
+        "[0:a:0][1:a:0]amix=inputs=2:duration=first,asplit=2[a][b]",
         "-ac", "2",
         "-c:a", codec,
         "-b:a", f"{BITRATE}",
@@ -214,6 +268,7 @@ def amerge(
     ])
 
     subprocess.run(commands)
+
 
 def commentary_mux(
         *,
@@ -240,6 +295,7 @@ def commentary_mux(
     ]
 
     subprocess.run(commands)
+
 
 def run(args):
     """Attempt to run named command."""
@@ -282,6 +338,7 @@ def run(args):
             output_filename=args.output_filename,
         )
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run ffmpeg commands to mux additional audio track.")
@@ -313,13 +370,20 @@ def main():
     extract_step.add_argument(
         "OUTPUT",
         type=str,
-        help=("file to export audio to. ffmpeg will choose encoder based on extension, "
-              "so provide it"),
+        help=(
+            "file to export audio to. "
+            "ffmpeg will choose encoder based on extension, "
+            "so provide it"
+        ),
     )
     extract_step.add_argument(
         "--track-index",
         type=int,
-        help=("index (indices start at ZERO) of target audio track - defaults to 0"),
+        dest="track_index",
+        help=(
+            "index (indices start at ZERO) of target audio track. "
+            "default: 0"
+        ),
         default=0,
     )
 
@@ -345,29 +409,39 @@ def main():
     align_step.add_argument(
         "--output-filename",
         type=str,
-        help=("output filename for aligned file - default is based on input filename. "
-              "ffmpeg will choose encoder based on extension, so provide it"),
+        dest="output_filename",
+        help=(
+            "output filename for aligned file - "
+            "default is based on input filename. "
+            "ffmpeg will choose encoder based on extension, so provide it"
+        ),
     )
 
     amerge_step = subparsers.add_parser(
         "amerge",
-        help=("merge two audio tracks into one audio-only mkv container. "
-              "a container is used because it can store language tags and titles."),
+        help=(
+            "merge two audio tracks into one audio-only mkv container. "
+            "a container is used because it can store language tags, "
+            "and titles."
+        ),
     )
     amerge_step.add_argument(
         "FILENAME_ONE",
-         type=str,
-         help="first file to merge",
+        type=str,
+        help="first file to merge",
     )
     amerge_step.add_argument(
         "FILENAME_TWO",
-         type=str,
-         help="second file to merge",
+        type=str,
+        help="second file to merge",
     )
     amerge_step.add_argument(
         "OUTPUT_FILE",
-         type=str,
-         help="output filename for merged file. extension 'mkv' will be added to this."
+        type=str,
+        help=(
+            "output filename for merged file. "
+            "extension 'mkv' will be added to this."
+        )
     )
     amerge_step.add_argument(
         "--language",
@@ -404,16 +478,19 @@ def main():
         help="name of container (feature_film.mkv)",
     )
     commentary_mux_step.add_argument(
-        "--output_filename",
+        "--output-filename",
         type=str,
+        dest="output_filename",
         help=("output filename for merged file. "
               "ffmpeg will choose encoder based on extension, so provide it. "
-              "default: CONTAINER_FILENAME.final.CONTAINER_EXTENSION (so, feature_film.final.mkv)"),
+              "default: CONTAINER_FILENAME.final.CONTAINER_EXTENSION "
+              "(so, feature_film.final.mkv)"),
         default=None,
     )
 
     args = parser.parse_args()
     run(args)
+
 
 def valid_ffmpeg_timestamp(timestamp):
     """Validate timestamp is of form HH:MM:SS.mmm."""
@@ -425,7 +502,8 @@ def valid_ffmpeg_timestamp(timestamp):
     except ValueError:
         raise argparse.ArgumentTypeError(
             f"Date {timestamp} formatted incorrectly. "
-            f"Should be 'HH.MM.SS.mmm' (hours, minutes, seconds, microseconds)."
+            f"Should be 'HH.MM.SS.mmm' "
+            "(hours, minutes, seconds, microseconds)."
         )
 
 
