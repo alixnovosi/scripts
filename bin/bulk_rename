@@ -2,9 +2,13 @@
 
 import argparse
 import os
+import readline
+
 
 def run(args):
     """run"""
+
+    readline.set_auto_history(False)
 
     files = sorted([
         os.path.join(args.directory, f)
@@ -15,7 +19,9 @@ def run(args):
     for file in files:
         print(f"\n{file}")
 
-        new_name = input("New name? (leave line empty or only spaces to skip): ").strip()
+        new_name = input(
+            "New name? (leave line empty or only spaces to skip): "
+        ).strip()
 
         if new_name == "":
             print("Skipping...")
@@ -23,13 +29,15 @@ def run(args):
         else:
 
             if args.prefix is not None:
-                new_full_name = os.path.join(args.directory, f"{args.prefix}{new_name}")
+                new_full_name = os.path.join(args.directory,
+                                             f"{args.prefix}{new_name}")
 
             if args.suffix is not None:
                 new_full_name = f"{new_full_name}{args.suffix}"
 
             print(f"Renaming {file} -> {new_full_name}")
             os.rename(file, os.path.join(args.directory, new_full_name))
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -59,6 +67,7 @@ def main():
 
     args = parser.parse_args()
     run(args)
+
 
 if __name__ == "__main__":
     main()
