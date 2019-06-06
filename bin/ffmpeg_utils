@@ -5,6 +5,27 @@ import os
 import subprocess
 
 
+def shrink(*, video, width, height, output_filename):
+    """
+    shrink a video to a new resolution.
+    assumes the new dimensions are smaller and that the ratio is the same,
+    unknown what will happen if you break these assumptions.
+    """
+
+    if output_filename is None:
+        video_pieces = video.rsplit(".", 1)
+
+        output_filename = f"{video_pieces[0]}.smaller.{video_pieces[1]}"
+
+    print(f"Shrinking {video} to {width}x{height}...")
+    subprocess.run([
+        "ffmpeg",
+        "-i", video,
+        "-vf", f"scale='{width}x{height}",
+        output_filename,
+    ])
+
+
 def gif_to_mkv(*, files):
     """
     convert a bunch of GIF files to mkv videos,
@@ -14,7 +35,6 @@ def gif_to_mkv(*, files):
     for file in files:
 
         print(f"Converting {file} to h264 mkv file...")
-
         subprocess.run([
             "ffmpeg",
             "-i", file,
@@ -127,6 +147,14 @@ def run(args):
             files=args.FILES,
         )
 
+    elif command == "shrink":
+        shrink(
+            video=args.VIDEO,
+            width=args.width,
+            height=args.height,
+            output_filename=args.output_filename,
+        )
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -137,6 +165,31 @@ def main():
     subparsers.required = True
     subparsers.dest = "command"
     subparsers.help = "command help"
+
+    shrink_command = subparsers.add_parser(
+        "shrink",
+        help="shrink a video to provided dimensions",
+    )
+    shrink_command.add_argument(
+        "VIDEO",
+        help="input file to convert",
+    )
+    shrink_command.add_argument(
+        "--width",
+        help="width in pixels for shrunk output video",
+        required=True,
+    )
+    shrink_command.add_argument(
+        "--height",
+        help="height in pixels for shrunk output video",
+        required=True,
+    )
+    shrink_command.add_argument(
+        "--output-filename",
+        dest="output_filename",
+        help=("desired output filename. "
+              "default: INPUT_FILENAME.smaller.INPUT_EXTENSION"),
+    )
 
     gif_to_mkv_command = subparsers.add_parser(
         "gif_to_mkv",
@@ -160,7 +213,7 @@ def main():
     bulk_mkv_copy_command.add_argument(
         "--directory",
         type=str,
-        help="directory to act on. Default: current directory.",
+        help="directory to act on. default: current directory.",
         default=os.getcwd(),
     )
     bulk_mkv_copy_command.add_argument(
