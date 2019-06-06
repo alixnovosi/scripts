@@ -5,6 +5,49 @@ import os
 import subprocess
 
 
+def birdsite_safe(*, videos):
+    """
+    process a video or videos so that the bird social media site SHOULD accept it.
+    will convert into h264 and aac and get it down to 720p.
+    """
+
+    for video in videos:
+        video_pieces = video.rsplit(".", 1)
+        output_filename = f"{video_pieces[0]}.birdsite.{video_pieces[1]}"
+
+        print(f"Converting {video} for social media...")
+        subprocess.run([
+            "ffmpeg",
+            "-i", video,
+            "-vf", "scale=-1:720",
+            "-c:v", "libx264",
+            "-crf", "25",
+            "-c:a", "aac",
+            output_filename,
+        ])
+
+
+def snip(*, video, start_time, end_time, output_filename):
+    """
+    snip a section from a video, from start to end time.
+    """
+
+    if output_filename is None:
+        video_pieces = video.rsplit(".", 1)
+        output_filename = f"{video_pieces[0]}.snip.{video_pieces[1]}"
+
+    print(f"Snipping {video} from {start_time} to {end_time}...")
+    subprocess.run([
+        "ffmpeg",
+        "-i", video,
+        "-vcodec", "copy",
+        "-acodec", "copy",
+        "-ss", start_time,
+        "-to", end_time,
+        output_filename,
+    ])
+
+
 def shrink(*, video, width, height, output_filename):
     """
     shrink a video to a new resolution.
@@ -14,7 +57,6 @@ def shrink(*, video, width, height, output_filename):
 
     if output_filename is None:
         video_pieces = video.rsplit(".", 1)
-
         output_filename = f"{video_pieces[0]}.smaller.{video_pieces[1]}"
 
     print(f"Shrinking {video} to {width}x{height}...")
@@ -155,6 +197,17 @@ def run(args):
             output_filename=args.output_filename,
         )
 
+    elif command == "snip":
+        snip(
+            video=args.VIDEO,
+            start_time=args.start_time,
+            end_time=args.end_time,
+            output_filename=args.output_filename,
+        )
+
+    elif command == "birdsite_safe":
+        birdsite_safe(video=args.VIDEO)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -165,6 +218,45 @@ def main():
     subparsers.required = True
     subparsers.dest = "command"
     subparsers.help = "command help"
+
+    birdsite_safe_command = subparsers.add_parser(
+        "birdsite_safe",
+        help="convert one or more videos for the bird social media site",
+    )
+    birdsite_safe_command.add_argument(
+        "VIDEO",
+        nargs="+",
+        help="input file(s) to convert",
+    )
+
+    snip_command = subparsers.add_parser(
+        "snip",
+        help="snip a video from start to end time",
+    )
+    snip_command.add_argument(
+        "VIDEO",
+        help="input file to convert",
+    )
+    snip_command.add_argument(
+        "--start-time",
+        dest="start_time",
+        help="start time to snip from, in HH:MM:SS.mmm format (m is microseconds)",
+        required=True,
+        type=valid_ffmpeg_timestamp,
+    )
+    snip_command.add_argument(
+        "--end-time",
+        dest="end_time",
+        help="end time to snip from, in HH:MM:SS.mmm format (m is microseconds)",
+        required=True,
+        type=valid_ffmpeg_timestamp,
+    )
+    snip_command.add_argument(
+        "--output-filename",
+        dest="output_filename",
+        help=("desired output filename. "
+              "default: INPUT_FILENAME.snip.INPUT_EXTENSION"),
+    )
 
     shrink_command = subparsers.add_parser(
         "shrink",
@@ -285,6 +377,21 @@ def main():
 
     args = parser.parse_args()
     run(args)
+
+
+def valid_ffmpeg_timestamp(timestamp):
+    """Validate timestamp is of form HH:MM:SS.mmm."""
+    try:
+        # %f means microseconds,
+        # but if we pass milliseconds in as microseconds,
+        # it should be fine.
+        return datetime.datetime.strptime(timestamp, "%H:%M:%S.%f")
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Date {timestamp} formatted incorrectly. "
+            f"Should be 'HH.MM.SS.mmm' "
+            "(hours, minutes, seconds, microseconds)."
+        )
 
 
 if __name__ == "__main__":
