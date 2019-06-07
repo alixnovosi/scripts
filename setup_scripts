@@ -1,97 +1,131 @@
-#!/bin/sh
+#!/usr/bin/env python3
 #-------------------------------------------------------------------------------------------------#
 # AUTHOR:  Andrew Michaud - https://drew.life                                                     #
-# FILE:    setup                                                                                  #
+# FILE:    setup_scripts                                                                          #
 # PURPOSE: script to deploy config files and scripts in this repo.                                #
-# UPDATED: 2019-05-22                                                                             #
+# UPDATED: 2019-06-06                                                                             #
 # LICENSE: ISC                                                                                    #
 #-------------------------------------------------------------------------------------------------#
 
-# TODO This isn't quite rigorous enough in checking to be sure it's not trying to symlink files
-# that already exist.
-# Fix that.
+import argparse
+import os
+import platform
+import subprocess
 
-#-------------------------------------------------------------------------------------------------#
-###################################### GET XDG VARS ###############################################
-#-------------------------------------------------------------------------------------------------#
-echo "Determining necessary XDG env vars..."
-echo
 
-# Ensure vars are set.
-OS="$(uname -s)"
-if [ "$OS" = "Darwin" ]; then
-    DEFAULT_DATA="$HOME/Library"
+def run(*, force):
+    """run script-linking script."""
 
-elif [ "$OS" = "Linux" ] || [ "$OS" = "FreeBSD" ]; then
-    DEFAULT_DATA="$HOME/.local/share"
+    print(
+        "determining necessary XDG env vars..."
+        "\n"
+    )
 
-else
-    echo "OS $OS currently unsupported!"
-    exit 1
-fi
-XDG_DATA_HOME=${XDG_DATA_HOME-${DEFAULT_DATA}}
-echo "XDG_DATA_HOME set to $XDG_DATA_HOME"
+    home = os.path.expanduser("~")
+    system_os = platform.system()
 
-if [ -d "$XDG_DATA_HOME" ]; then
-    if [ -L "$XDG_DATA_HOME" ]; then
-        echo "Data DIR $XDG_DATA_HOME exists as a symlink."
-    else
-        echo "Data DIR $XDG_DATA_HOME exists as a directory."
-    fi
+    # retrieve xdg_data_home if it exists.
+    # otherwise, set a sensible default.
+    xdg_data_home = os.environ.get("XDG_DATA_HOME")
+    if xdg_data_home is None:
 
-else
-    echo "Data DIR $XDG_DATA_HOME does not exist, creating."
-    mkdir -p "$XDG_DATA_HOME"
-fi
+        if system_os == "Darwin":
+            xdg_data_home = os.path.join(home, "Library")
 
-#-------------------------------------------------------------------------------------------------#
-#################################### GET OTHER VARS ###############################################
-#-------------------------------------------------------------------------------------------------#
-echo
-echo "Determining other necessary env vars..."
-echo
+        elif system_os == "Linux" or os == "FreeBSD":
+            xdg_data_home = os.path.join(home, ".local", "share")
 
-# Get script/binary directory.
-BIN_HOME="$XDG_DATA_HOME/bin"
-echo "BIN_HOME set to $BIN_HOME"
+        else:
+            print(f"OS {system_os} currently unsupported!")
+            sys.exit(1)
 
-# Ensure it exists.
-if [ -d "$BIN_HOME" ]; then
-    if [ -L "$BIN_HOME" ]; then
-        echo "Bin DIR $BIN_HOME exists as a symlink."
-    else
-        echo "Bin DIR $BIN_HOME exists as a directory."
-    fi
+    print(
+        f"XDG_DATA_HOME set to {xdg_data_home}. "
+        "scripts will be placed in {xdg_data_home}/bin"
+    )
 
-else
-    echo "Bin DIR $BIN_HOME does not exist, creating."
-    mkdir -p "$BIN_HOME"
-fi
+    bin_dir = os.path.join(xdg_data_home, "bin")
 
-# Grab directory of git repo.
-GIT_DIR="$(pwd -P)"
-echo "GIT_DIR is $GIT_DIR"
+    if os.path.isdir(bin_dir):
+        print(f"bin dir {bin_dir} exists as a directory, good")
 
-# Grab places we'll put scripts and config files.
-GIT_BIN_HOME="$GIT_DIR/bin"
+    elif os.path.isfile(xdg_data_home):
+        print(f"bin dir {bin_dir} is a file! please remove it")
+        sys.exit(1)
 
-#-------------------------------------------------------------------------------------------------#
-##################################### DEPLOY SCRIPTS ##############################################
-#-------------------------------------------------------------------------------------------------#
-echo
-echo "Deploying scripts..."
-echo
+    else:
+        print(f"bin dir {bin_dir} does not exist, creating...")
+        os.makedirs(os.path.join(xdg_data_home, "bin"))
 
-# Deploy SCRIPTS.
-echo "Linking all scripts in $GIT_BIN_HOME into $BIN_HOME"
-SCRIPTS="$(find "$GIT_BIN_HOME" -maxdepth 1 -type f)"
-for SCRIPT in $SCRIPTS; do
-    SCRIPT_NAME="$(basename "$SCRIPT")"
-    echo "On script $SCRIPT_NAME"
-    if [ ! -L "$BIN_HOME/$SCRIPT_NAME" ]; then
-        echo "Linking $SCRIPT into $BIN_HOME"
-        ln -s "$SCRIPT" "$BIN_HOME"
-    else
-        echo "Found script $SCRIPT_NAME in $BIN_HOME already."
-    fi
-done
+    print(f"bin dir {bin_dir} is ready")
+
+    scripts_dir = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "bin",
+    )
+
+    print(
+        "\n"
+        f"linking all scripts in {scripts_dir} into {bin_dir}..."
+        "\n"
+    )
+
+    scripts = sorted([
+        os.path.join(scripts_dir, file)
+        for file in os.listdir(scripts_dir)
+        if os.path.isfile(os.path.join(scripts_dir, file))
+    ])
+
+    for script in scripts:
+
+        basename = os.path.basename(script)
+        possible_existing = os.path.join(bin_dir, basename)
+
+        print(possible_existing)
+        print(f"\ntrying to process {basename}...")
+        if os.path.isdir(possible_existing):
+            print(f"found a directory (?) named {basename} in {bin_dir} already, skipping")
+
+        elif os.path.isfile(possible_existing) or os.path.islink(possible_existing):
+            if force:
+                os.remove(possible_existing)
+                os.symlink(script, possible_existing)
+
+                print(
+                    f"link {possible_existing} -> {script} created, "
+                    "replacing old link"
+                )
+
+            else:
+                print(f"found a file or symlink named {basename} in {bin_dir} already, skipping")
+
+        else:
+            os.symlink(script, possible_existing)
+            print(
+                f"link {possible_existing} -> {script} created"
+            )
+
+    print("done!")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="link scripts from repo into $XDG_DATA_HOME/bin",
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "overwrite existing symlinks in $XDG_DATA_HOME/bin when we are "
+            "symlinking files from this git repo."
+        ),
+    )
+
+    args = parser.parse_args()
+
+    run(force=args.force)
+
+
+if __name__ == "__main__":
+    main()
