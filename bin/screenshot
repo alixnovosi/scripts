@@ -1,25 +1,93 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-PICTURE_HOME=$(xdg-user-dir PICTURES)
-SCREENSHOT_HOME="${PICTURE_HOME}/screenshots/%FT%TZ%z.png"
+import argparse
+import datetime
+import os
+import subprocess
+import time
 
-if [[ -z "$1" ]]; then
-    scrot "${SCREENSHOT_HOME}" --silent
 
-elif [[ "$1" = "select" ]]; then
-    sleep 0.1
-    scrot "${SCREENSHOT_HOME}" --select --silent
+SCREENSHOT_PROGRAM = "scrot"
 
-elif [[ "$1" = "delay" ]]; then
+def run(*, subcommand, delay, screenshot_target):
+    """run screenshot"""
+    picture_home = subprocess.run(
+        ["xdg-user-dir", "PICTURES"],
+        stdout=subprocess.PIPE,
+        encoding="UTF-8",
+    ).stdout.strip()
 
-    if [[ -z "$2" ]]; then
-        DELAY=5
-    else
-        DELAY="$2"
-    fi
+    if screenshot_target is None:
+        screenshot_home = os.path.join(f"{picture_home}", "screenshots")
 
-    scrot "${SCREENSHOT_HOME}" --delay "${DELAY}" --silent
-else
-    echo "unknown command $1"
-    exit 1
-fi
+        now = datetime.datetime.now().astimezone()
+        date_fmt = now.strftime("%Y-%m-%dT%H:%M:%SZ%z")
+        filename = f"{date_fmt}.png"
+        screenshot_target = os.path.join(screenshot_home, filename)
+
+    if subcommand is None:
+        subprocess.run([
+            SCREENSHOT_PROGRAM,
+            screenshot_target,
+            "--silent",
+        ])
+
+    elif subcommand == "select":
+        time.sleep(0.1)
+        subprocess.run([
+            SCREENSHOT_PROGRAM,
+            screenshot_target,
+            "--select",
+            "--silent",
+        ])
+
+    elif subcommand == "delay":
+        subprocess.run([
+            SCREENSHOT_PROGRAM,
+            screenshot_target,
+            "--delay", f"{delay}"
+            "--silent",
+        ])
+    else:
+        print(f"unknown subcommand '{subcommand}'!")
+        sys.exit(1)
+
+
+def main():
+    """CLI handling"""
+    parser = argparse.ArgumentParser(
+        description="take screenshots!!!",
+    )
+
+    parser.add_argument(
+        "--subcommand",
+        help=(
+            "subcommand to be used. may be 'delay' or 'select', "
+            "or omit to take full-screen screenshots"
+        ),
+    )
+    parser.add_argument(
+        "--delay",
+        type=int,
+        help=(
+            "delay in seconds to be used for 'delay' subcommand. ignored otherwise. "
+            "default: 5 seconds"
+        ),
+        default=5,
+    )
+    parser.add_argument(
+        "--screenshot-target",
+        dest="screenshot_target",
+        help=(
+            "target for screenshot to be saved to. "
+            "default: xdg-user-dir pictures folder, and then screenshots and then ISO 8601 "
+            "under that"
+        ),
+    )
+
+    args = parser.parse_args()
+    run(subcommand=args.subcommand, delay=args.delay, screenshot_target=args.screenshot_target)
+
+
+if __name__ == "__main__":
+    main()
