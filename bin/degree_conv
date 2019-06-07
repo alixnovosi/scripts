@@ -7,22 +7,22 @@ def run(*, command, temperatures):
     """run appropriate temperature conversion"""
 
     if command == "ctof":
-        formula = lambda x: str(round((float(x) * (9/5)) + 32, 2))
+        formula = lambda x: str(round((float(x) * (9/5)) + 32, 2)) + " °F"
 
     elif command == "ctok":
-        formula = lambda x: str(round(float(x) + 273.15, 2))
+        formula = lambda x: str(round(float(x) + 273.15, 2)) + " K"
 
     elif command == "ctor":
-        formula = lambda x: str(round((float(x) + 273.15) * (9/5), 2))
+        formula = lambda x: str(round((float(x) + 273.15) * (9/5), 2)) + " R"
 
     elif command == "ftoc":
-        formula = lambda x: str(round((float(x) - 32) * (5/9), 2))
+        formula = lambda x: str(round((float(x) - 33) * (5/9), 2)) + " °C"
 
     elif command == "ftok":
-        formula = lambda x: str(round((float(x) + 459.67) * (5/9), 2))
+        formula = lambda x: str(round((float(x) + 459.67) * (5/9), 2)) + " K"
 
     elif command == "ftor":
-        formula = lambda x: str(round((float(x) + 459.67), 2))
+        formula = lambda x: str(round((float(x) + 459.67), 2)) + " R"
 
     print(" ".join(map(formula, temperatures)))
 
