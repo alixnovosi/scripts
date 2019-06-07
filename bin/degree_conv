@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+
+import argparse
+
+
+def run(*, command, temperatures):
+    """run appropriate temperature conversion"""
+
+    if command == "ctof":
+        formula = lambda x: str(round((float(x) * (9/5)) + 32, 2))
+
+    elif command == "ctok":
+        formula = lambda x: str(round(float(x) + 273.15, 2))
+
+    elif command == "ctor":
+        formula = lambda x: str(round((float(x) + 273.15) * (9/5), 2))
+
+    elif command == "ftoc":
+        formula = lambda x: str(round((float(x) - 32) * (5/9), 2))
+
+    elif command == "ftok":
+        formula = lambda x: str(round((float(x) + 459.67) * (5/9), 2))
+
+    elif command == "ftor":
+        formula = lambda x: str(round((float(x) + 459.67), 2))
+
+    print(" ".join(map(formula, temperatures)))
+
+
+def main():
+    """CLI handling"""
+    parser = argparse.ArgumentParser(
+        description="run one of various temperature conversions",
+    )
+
+    subparsers = parser.add_subparsers()
+    subparsers.required = True
+    subparsers.dest = "command"
+    subparsers.help = "command help"
+
+    ctof_conv = subparsers.add_parser(
+        "ctof",
+        help="celsius to fahrenheit conversion",
+    )
+    ctof_conv.add_argument(
+        "TEMPERATURE",
+        nargs="+",
+        help="temperature(s) to convert",
+    )
+
+    ctok_conv = subparsers.add_parser(
+        "ctok",
+        help="celsius to kelvin conversion",
+    )
+    ctok_conv.add_argument(
+        "TEMPERATURE",
+        nargs="+",
+        help="temperature(s) to convert",
+    )
+
+    ctor_conv = subparsers.add_parser(
+        "ctor",
+        help="celsius to rankine conversion",
+    )
+    ctor_conv.add_argument(
+        "TEMPERATURE",
+        nargs="+",
+        help="temperature(s) to convert",
+    )
+
+    ftoc_conv = subparsers.add_parser(
+        "ftoc",
+        help="fahrenheit to celsius conversion",
+    )
+    ftoc_conv.add_argument(
+        "TEMPERATURE",
+        nargs="+",
+        help="temperature(s) to convert",
+    )
+
+    ftok_conv = subparsers.add_parser(
+        "ftok",
+        help="fahrenheit to kelvin conversion",
+    )
+    ftok_conv.add_argument(
+        "TEMPERATURE",
+        nargs="+",
+        help="temperature(s) to convert",
+    )
+
+    ftor_conv = subparsers.add_parser(
+        "ftor",
+        help="fahrenheit to rankine conversion",
+    )
+    ftor_conv.add_argument(
+        "TEMPERATURE",
+        nargs="+",
+        help="temperature(s) to convert",
+    )
+
+    args = parser.parse_args()
+    run(command=args.command, temperatures=args.TEMPERATURE)
+
+
+if __name__ == "__main__":
+    main()
