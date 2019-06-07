@@ -1,27 +1,55 @@
-#!/bin/sh
-# Handles all the nonsense necessary to get bibtex and pdflatex to work together. No promises.
+#!/usr/bin/env python3
 
-if [ "$#" -ne 1 ]; then
-    echo "Not enough arguments supplied!"
-    echo "Usage: handleTeX filename"
-    echo "(Drop extension)"
-    exit 1
-fi
+import argparse
+import os
+import subprocess
+import sys
 
-if [ ! -r "${1}.tex" ]; then
-    echo "${1}.tex not readable, can do nothing."
-    exit 1
-fi
 
-# .bib file, run bibtex.
-# Yes, most or all of this is necessary.
-if [ -w "${1}.bib" ]; then
-    pdflatex "${1}.tex"
-    latex "${1}.tex"
-    bibtex "${1}.bib"
-    latex "${1}.tex"
-    latex "${1}.tex"
-fi
+# handles all the nonsense necessary to get bibtex and pdflatex to work together
+# no promises
+def run(*, filename):
+    """run TeX garbage"""
 
-# Compile to PDF.
-pdflatex "${1}.tex"
+    if not os.path.isfile(filename):
+        print(f"file {filename} does not exist!")
+        sys.exit(1)
+
+    elif not os.access(filename, os.R_OK):
+        print(f"file {filename} is not readable!")
+        sys.exit(1)
+
+    file_base = filename.rsplit(".", 1)[0]
+
+    # process citations correctly,
+    # and create everything needed to create PDF with proper citations
+    # yes, most or all of this is necessary
+    bibfile = f"{file_base}.bib"
+    if os.access(bibfile, os.W_OK):
+        subprocess.run(["pdflatex", filename])
+        subprocess.run(["latex", filename])
+        subprocess.run(["bibtex", bibfile])
+        subprocess.run(["latex", filename])
+        subprocess.run(["latex", filename])
+
+    # final compile to PDF
+    subprocess.run(["pdflatex", filename])
+
+
+def main():
+    """CLI handling"""
+    parser = argparse.ArgumentParser(
+        description="handle shuffle needed to generate PDF TeX document with citations correctly",
+    )
+
+    parser.add_argument(
+        "FILENAME",
+        help="filename of TeX file to be handled",
+    )
+
+    args = parser.parse_args()
+    run(filename=args.FILENAME)
+
+
+if __name__ == "__main__":
+    main()
