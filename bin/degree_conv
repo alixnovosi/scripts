@@ -1,30 +1,55 @@
 #!/usr/bin/env python3
 
 import argparse
+import enum
+
+class Symbols(enum.Enum):
+    celsius = "°C"
+    fahrenheit = "°F"
+    kelvin = "K"
+    rankine = "R"
+
+MODES = {
+    "ctof": {
+        "description": "celsius to fahrenheit",
+        "formula": lambda x: (float(x) * (9/5)) + 32,
+        "symbol": Symbols.fahrenheit,
+    },
+    "ctok": {
+        "description": "celsius to kelvin",
+        "formula": lambda x: float(x) + 273.15,
+        "symbol": Symbols.kelvin,
+    },
+    "ctor": {
+        "description": "celsius to rankine",
+        "formula": lambda x:(float(x) + 273.15) * (9/5),
+        "symbol": Symbols.rankine,
+    },
+
+    "ftoc": {
+        "description": "fahrenheit to celsius",
+        "formula": lambda x: (float(x) - 33) * (5/9),
+        "symbol": Symbols.celsius,
+    },
+    "ftok": {
+        "description": "fahrenheit to kelvin",
+        "formula": lambda x: (float(x) + 459.67) * (5/9),
+        "symbol": Symbols.kelvin,
+    },
+    "ftor": {
+        "description": "fahrenheit to rankine",
+        "formula": lambda x: float(x) + 459.67,
+        "symbol": Symbols.rankine,
+    },
+}
 
 
-def run(*, command, temperatures):
+def run(*, mode, temperatures):
     """run appropriate temperature conversion"""
+    mode_obj = MODES[mode]
+    display_lambda = lambda x: f"{round(mode_obj['formula'](x), 2)} {mode_obj['symbol'].value}"
 
-    if command == "ctof":
-        formula = lambda x: str(round((float(x) * (9/5)) + 32, 2)) + " °F"
-
-    elif command == "ctok":
-        formula = lambda x: str(round(float(x) + 273.15, 2)) + " K"
-
-    elif command == "ctor":
-        formula = lambda x: str(round((float(x) + 273.15) * (9/5), 2)) + " R"
-
-    elif command == "ftoc":
-        formula = lambda x: str(round((float(x) - 33) * (5/9), 2)) + " °C"
-
-    elif command == "ftok":
-        formula = lambda x: str(round((float(x) + 459.67) * (5/9), 2)) + " K"
-
-    elif command == "ftor":
-        formula = lambda x: str(round((float(x) + 459.67), 2)) + " R"
-
-    print(" ".join(map(formula, temperatures)))
+    print(" ".join(map(display_lambda, temperatures)))
 
 
 def main():
@@ -33,73 +58,21 @@ def main():
         description="run one of various temperature conversions",
     )
 
-    subparsers = parser.add_subparsers()
-    subparsers.required = True
-    subparsers.dest = "command"
-    subparsers.help = "command help"
-
-    ctof_conv = subparsers.add_parser(
-        "ctof",
-        help="celsius to fahrenheit conversion",
+    descriptions = ", ".join(map(lambda kv: f"{kv[0]} ({kv[1]['description']})", MODES.items()))
+    parser.add_argument(
+        "MODE",
+        help=(
+            f"conversion mode. options are: {descriptions}"
+        ),
     )
-    ctof_conv.add_argument(
-        "TEMPERATURE",
-        nargs="+",
-        help="temperature(s) to convert",
-    )
-
-    ctok_conv = subparsers.add_parser(
-        "ctok",
-        help="celsius to kelvin conversion",
-    )
-    ctok_conv.add_argument(
-        "TEMPERATURE",
-        nargs="+",
-        help="temperature(s) to convert",
-    )
-
-    ctor_conv = subparsers.add_parser(
-        "ctor",
-        help="celsius to rankine conversion",
-    )
-    ctor_conv.add_argument(
-        "TEMPERATURE",
-        nargs="+",
-        help="temperature(s) to convert",
-    )
-
-    ftoc_conv = subparsers.add_parser(
-        "ftoc",
-        help="fahrenheit to celsius conversion",
-    )
-    ftoc_conv.add_argument(
-        "TEMPERATURE",
-        nargs="+",
-        help="temperature(s) to convert",
-    )
-
-    ftok_conv = subparsers.add_parser(
-        "ftok",
-        help="fahrenheit to kelvin conversion",
-    )
-    ftok_conv.add_argument(
-        "TEMPERATURE",
-        nargs="+",
-        help="temperature(s) to convert",
-    )
-
-    ftor_conv = subparsers.add_parser(
-        "ftor",
-        help="fahrenheit to rankine conversion",
-    )
-    ftor_conv.add_argument(
+    parser.add_argument(
         "TEMPERATURE",
         nargs="+",
         help="temperature(s) to convert",
     )
 
     args = parser.parse_args()
-    run(command=args.command, temperatures=args.TEMPERATURE)
+    run(mode=args.MODE, temperatures=args.TEMPERATURE)
 
 
 if __name__ == "__main__":
