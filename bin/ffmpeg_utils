@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
+import datetime
 import os
 import subprocess
 
 
 def birdsite_safe(*, videos):
     """
-    process a video or videos so that the bird social media site SHOULD accept it.
+    process a video or videos,
+    so that the bird social media site SHOULD accept it.
     will convert into h264 and aac and get it down to 720p.
     """
 
@@ -240,14 +242,20 @@ def main():
     snip_command.add_argument(
         "--start-time",
         dest="start_time",
-        help="start time to snip from, in HH:MM:SS.mmm format (m is microseconds)",
+        help=(
+            "start time to snip from, "
+            "in HH:MM:SS.mmm format (m is microseconds)"
+        ),
         required=True,
         type=valid_ffmpeg_timestamp,
     )
     snip_command.add_argument(
         "--end-time",
         dest="end_time",
-        help="end time to snip from, in HH:MM:SS.mmm format (m is microseconds)",
+        help=(
+            "end time to snip from, "
+            "in HH:MM:SS.mmm format (m is microseconds)"
+        ),
         required=True,
         type=valid_ffmpeg_timestamp,
     )
@@ -310,7 +318,7 @@ def main():
     )
     bulk_mkv_copy_command.add_argument(
         "--attempt-convert",
-        type=bool,
+        action="store_true",
         dest="attempt_convert",
         help="attempt to convert audio to aac and video to h264",
         default=False,
@@ -364,7 +372,7 @@ def main():
     )
     gif_command.add_argument(
         "--skip-writing-palette",
-        type=bool,
+        action="store_true",
         dest="skip_writing_palette",
         help=(
             "whether to skip the command of having ffmpeg generate a palette. "
