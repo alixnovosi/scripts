@@ -1,48 +1,138 @@
-#!/bin/sh
-#-------------------------------------------------------------------------------------------------#
-# AUTHOR:  Andrew Michaud - https://drew.life                                                     #
-# FILE:    menu                                                                                   #
-# PURPOSE: script for choosing things with dmenu                                                  #
-# UPDATED: 2019-05-22                                                                             #
-# LICENSE: ISC                                                                                    #
-#-------------------------------------------------------------------------------------------------#
-# choose something with dmenu. takes prefix and regex and type.
-choose () {
-    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        echo "[menu] [ERROR] Not enough parameters given to choose!"
-        exit 1
-    fi
-    echo "[menu] Mode $3"
+#!/usr/bin/env python3
 
-    # Choose (wisely).
-    choice=$(find "$1" -regex "$2" | sed "s|$1/||" | dmenu -i)
-    [ -n "$choice" ] || exit
-    echo "[menu] Selected '$choice'."
-}
+import argparse
+import os
+import re
+import subprocess
+import sys
 
-# passwords with pass password manager the standard UNIX password manager
-if [ "$1" = "pass" ]; then
-    # copy pass to clipboard
-    XDG_PASS_DIR=$(xdg-user-dir PASS)
-    choose "${XDG_PASS_DIR}" ".*\.\(gpg\)" "pass"
-    export DISPLAY=":0"
-    pass show -c "$(echo "$choice" | sed 's/.gpg$//')" 2>/dev/null
 
-# videos with mpv
-elif [ "$1" = "vid" ]; then
-    # play
-    XDG_VIDEOS_DIR=$(xdg-user-dir VIDEOS)
-    choose "$XDG_VIDEOS_DIR" ".*\.\(mkv\|mp4\|avi\|vob\)" "video"
-    nohup mpv "$XDG_VIDEOS_DIR/$choice"
+def run_menu(*, mode, directory, regex):
+    """do the actual menu run and get the chosen item"""
+    if not directory.endswith("/"):
+        directory += "/"
 
-# music with mpd
-elif [ "$1" = "music" ]; then
-    # Clear mpd playlist and play this playlist instead.
-    XDG_MUSIC_DIR=$(xdg-user-dir MUSIC)
-    choose "$XDG_MUSIC_DIR/playlists" ".*\.\(m3u\)" "music"
-    mpc clear && mpc load "$(echo "$choice" | sed 's/.m3u$//')" && mpc play
+    items = subprocess.Popen(
+        ["find", directory, "-regex", regex],
+        universal_newlines=True,
+        stdout=subprocess.PIPE,
+    )
 
-else
-    echo "[menu] Unsupported selection!"
-    exit 1
-fi
+    fixed_items = subprocess.Popen(
+        ["sed", f"s|{regex}/||"],
+        universal_newlines=True,
+        stdout=subprocess.PIPE,
+        stdin=items.stdout,
+    )
+
+    choice = subprocess.Popen(
+        ["rofi", "-dmenu"],
+        encoding="UTF-8",
+        stdout=subprocess.PIPE,
+        stdin=fixed_items.stdout,
+    )
+
+    choice_stdout, _ = choice.communicate()
+
+    if choice_stdout is None or choice_stdout.strip() == "":
+        print("No choice! Exiting...")
+        sys.exit(1)
+
+    return choice_stdout.strip()
+
+
+def choose(*, mode, directory):
+    """handle stuff around menu choice and run menu"""
+
+    if mode == "pass":
+        if directory is None:
+            directory = subprocess.run(
+                ["xdg-user-dir", "PASS"],
+                stdout=subprocess.PIPE,
+                encoding="UTF-8",
+            ).stdout.strip()
+
+        choice = run_menu(mode=mode, directory=directory, regex=".*\.\(gpg\)")
+
+        trimmed_choice = re.sub(f"^{directory}", "", choice)
+        trimmed_choice = re.sub("\.gpg$", "", trimmed_choice)
+
+        subprocess.run([
+            "pass",
+            "show",
+            "-c", trimmed_choice,
+        ])
+
+    elif mode == "vid":
+        if directory is None:
+            directory = subprocess.run(
+                ["xdg-user-dir", "VIDEOS"],
+                stdout=subprocess.PIPE,
+                encoding="UTF-8",
+            ).stdout.strip()
+
+        choice = run_menu(mode=mode, directory=directory, regex=".*\.\(mkv\|mp4\|avi\|vob\)")
+
+        full_path = os.path.join(directory, choice)
+        subprocess.run(["mpv", full_path])
+
+    elif mode == "music":
+        if directory is None:
+            directory = subprocess.run(
+                ["xdg-user-dir", "MUSIC"],
+                stdout=subprocess.PIPE,
+                encoding="UTF-8",
+            ).stdout.strip()
+
+
+        full_directory = os.path.join(directory, "playlists")
+
+        choice = run_menu(mode=mode, directory=full_directory, regex=".*\.\(m3u\)")
+
+        trimmed_choice = re.sub(f"^{full_directory}/", "", choice)
+        trimmed_choice = re.sub("\.m3u$", "", trimmed_choice)
+
+        subprocess.run(["mpc", "clear"], stdout=subprocess.DEVNULL)
+        subprocess.run(["mpc", "load", trimmed_choice], stdout=subprocess.DEVNULL)
+        subprocess.run(["mpc", "play"], stdout=subprocess.DEVNULL)
+
+    else:
+        print(f"mode {mode} is unsupported!")
+        sys.exit(1)
+
+
+def main():
+    """main program"""
+
+    parser = argparse.ArgumentParser(
+        description="choose items from a menu",
+    )
+
+    parser.add_argument(
+        "MODE",
+        help=(
+            "mode menu should run in. options are: "
+            "pass (get password from pass password manager), "
+            "vid (play movies with mpv), "
+            "music (add playlists to mpd)"
+        ),
+        type=str,
+    )
+    parser.add_argument(
+        "--directory",
+        help=(
+            "directory to be used for command. default depends on mode. "
+            "pass: xdg-user-dir PASS "
+            "music: xdg-user-dir MUSIC "
+            "vid: xdg-user-dir VIDEOS "
+        ),
+        type=str,
+        default=None,
+    )
+
+    args = parser.parse_args()
+    choose(mode=args.MODE, directory=args.directory)
+
+
+if __name__ == "__main__":
+    main()
