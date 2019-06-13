@@ -1,14 +1,68 @@
-#!/bin/sh
-# Toggle whether oneko is running or not.
+#!/usr/bin/env python3
 
-oneko_cmd="oneko -tofocus -speed 32"
+import argparse
+import os
+import subprocess
 
-if [ "$(pgrep -fc "$oneko_cmd")" -gt 0 ]; then
-    echo "killing oneko..."
-    killall -9 oneko
-    xsetroot -cursor_name left_ptr
+def run(*, pidfile):
+    """run oneko kill or respawn"""
 
-else
-    echo "starting oneko!"
-    $oneko_cmd &
-fi
+    oneko_cmd = ["oneko", "-tofocus", "-speed", "32"]
+    cleanup_cmd = ["xsetroot", "-cursor_name", "left_ptr"]
+
+    if pidfile is None:
+        uid = os.getuid()
+
+        pidfile = os.path.join(
+            os.sep,
+            "var",
+            "run",
+            "user",
+            f"{uid}",
+            "oneko",
+            "oneko.pid",
+        )
+
+    piddir = os.path.dirname(pidfile)
+
+    if not os.path.isdir(piddir):
+        os.makedirs(piddir)
+
+    # existence of pidfile indicates running processs, so we kill it
+    # the other branch indicates there's no running process, so we start it.
+    if os.path.isfile(pidfile):
+        with open(pidfile, "r") as f:
+            oneko_pid = f.read().strip()
+
+        os.remove(pidfile)
+
+        subprocess.run(["kill", oneko_pid])
+        subprocess.run(cleanup_cmd)
+
+    else:
+        oneko_pid = subprocess.Popen(oneko_cmd).pid
+
+        with open(pidfile, "w") as f:
+            f.write(f"{oneko_pid}")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="toggle cute cat oneko",
+    )
+
+    parser.add_argument(
+        "--pidfile",
+        help=(
+            "location of pidfile to use. "
+            "by default, will attempt to use "
+            "/var/run/user/$UID/oneko/oneko.pid"
+        ),
+        default=None,
+    )
+
+    args = parser.parse_args()
+
+    run(pidfile=args.pidfile)
+
+if __name__ == "__main__":
+    main()
