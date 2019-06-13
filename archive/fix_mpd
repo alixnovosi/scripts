@@ -1,25 +1,44 @@
-#!/bin/bash
-# Andrew Michaud
-# Old script to get around weird MPD behavior on delete.
+#!/usr/bin/env python3
 
-PLAYLIST="pods"
+import os
+import signal
+import subprocess
+import time
 
-if pgrep -x "mpd"; then
-    mpc pause
-    mpc save "$PLAYLIST"
+# Old script to get around weird MPD behavior on delete on OSX.
 
-    killall mpd
-fi
+PLAYLIST = "pods"
 
-MPD_DIR="$HOME/Library/Caches/mpd"
-FILES=( "$MPD_DIR/database" "$MPD_DIR/state" "$MPD_DIR/sticker.sql" );
-for file in "${FILES[@]}"; do
-    [ -f "$file" ] || rm "$file"
-done
 
-mpd
+def main():
+    mpd_code = subprocess.run(
+        ["pgrep", "-x", "mpd"],
+        stdout=subprocess.PIPE,
+        encoding="UTF-8",
+    ).stdout.strip()
 
-sleep 2
+    if mpd_code != "":
+        subprocess.run(["mpc", "pause"])
+        subprocess.run(["mpc", "save", PLAYLIST])
 
-mpc load "$PLAYLIST"
-mpc play
+        os.kill(int(mpd_code), signal.SIGTERM)
+
+    home = os.path.expanduser("~")
+    mpd_dir = os.path.join(home, "Library", "Caches", "mpd")
+
+    files = list(map(lambda x: os.path.join(mpd_dir, x), ["database", "state", "sticker.sql"]))
+
+    for file in files:
+        if os.path.isfile(file):
+            os.remove(file)
+
+    subprocess.Popen("mpd")
+
+    time.sleep(2)
+
+    subprocess.run(["mpc", "load", PLAYLIST])
+    subprocess.run(["mpc", "play"])
+
+
+if __name__ == "__main__":
+    main()
