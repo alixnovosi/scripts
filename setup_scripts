@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
-#-------------------------------------------------------------------------------------------------#
-# AUTHOR:  Andrew Michaud - https://drew.life                                                     #
-# FILE:    setup_scripts                                                                          #
-# PURPOSE: script to deploy config files and scripts in this repo.                                #
-# UPDATED: 2019-06-06                                                                             #
-# LICENSE: ISC                                                                                    #
-#-------------------------------------------------------------------------------------------------#
 
 import argparse
 import os
 import platform
-import subprocess
+import sys
 
 
 def run(*, force):
@@ -84,9 +77,14 @@ def run(*, force):
         print(possible_existing)
         print(f"\ntrying to process {basename}...")
         if os.path.isdir(possible_existing):
-            print(f"found a directory (?) named {basename} in {bin_dir} already, skipping")
+            print(
+                f"found a directory (?) named {basename} in "
+                f"{bin_dir} already, skipping"
+            )
 
-        elif os.path.isfile(possible_existing) or os.path.islink(possible_existing):
+        elif os.path.isfile(possible_existing) or \
+                os.path.islink(possible_existing):
+
             if force:
                 os.remove(possible_existing)
                 os.symlink(script, possible_existing)
@@ -97,7 +95,10 @@ def run(*, force):
                 )
 
             else:
-                print(f"found a file or symlink named {basename} in {bin_dir} already, skipping")
+                print(
+                    f"found a file or symlink named {basename} "
+                    f"in {bin_dir} already, skipping"
+                )
 
         else:
             os.symlink(script, possible_existing)
@@ -120,6 +121,7 @@ def main():
             "overwrite existing symlinks in $XDG_DATA_HOME/bin when we are "
             "symlinking files from this git repo."
         ),
+        default=False,
     )
 
     args = parser.parse_args()
