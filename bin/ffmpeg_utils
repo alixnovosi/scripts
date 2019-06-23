@@ -208,7 +208,7 @@ def run(args):
         )
 
     elif command == "birdsite_safe":
-        birdsite_safe(video=args.VIDEO)
+        birdsite_safe(videos=args.VIDEO)
 
 
 def main():
