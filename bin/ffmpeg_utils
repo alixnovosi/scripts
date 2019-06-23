@@ -142,7 +142,7 @@ def bulk_mkv_copy(*, directory, target_extension, attempt_convert, crf):
 def gif(*, video, scale, fps, palette_file, skip_writing_palette):
     """make GIF of input video."""
 
-    if palette_file is not None:
+    if palette_file is None:
         palette_file = "/tmp/palette.png"
 
     if not skip_writing_palette:
