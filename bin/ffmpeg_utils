@@ -41,10 +41,10 @@ def snip(*, video, start_time, end_time, output_filename):
     print(f"Snipping {video} from {start_time} to {end_time}...")
     subprocess.run([
         "ffmpeg",
+        "-ss", start_time,
         "-i", video,
         "-vcodec", "copy",
         "-acodec", "copy",
-        "-ss", start_time,
         "-to", end_time,
         output_filename,
     ])
