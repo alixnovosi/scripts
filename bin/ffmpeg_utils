@@ -393,8 +393,8 @@ def valid_ffmpeg_timestamp(timestamp):
         # %f means microseconds,
         # but if we pass milliseconds in as microseconds,
         # it should be fine.
-        time =  datetime.datetime.strptime(timestamp, "%H:%M:%S.%f")
-        return time.strftime("%M:%M:%S.%f")[-3]
+        time = datetime.datetime.strptime(timestamp, "%H:%M:%S.%f")
+        return time.strftime("%M:%M:%S.%f")[:-3]
     except ValueError:
         raise argparse.ArgumentTypeError(
             f"Date {timestamp} formatted incorrectly. "
