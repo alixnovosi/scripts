@@ -43,9 +43,9 @@ def snip(*, video, start_time, end_time, output_filename):
         "ffmpeg",
         "-ss", start_time,
         "-i", video,
-        "-vcodec", "copy",
-        "-acodec", "copy",
         "-to", end_time,
+        "-c", "copy",
+        "-copyts",
         output_filename,
     ])
 
@@ -394,7 +394,7 @@ def valid_ffmpeg_timestamp(timestamp):
         # but if we pass milliseconds in as microseconds,
         # it should be fine.
         time = datetime.datetime.strptime(timestamp, "%H:%M:%S.%f")
-        return time.strftime("%M:%M:%S.%f")[:-3]
+        return time.strftime("%H:%M:%S.%f")[:-3]
     except ValueError:
         raise argparse.ArgumentTypeError(
             f"Date {timestamp} formatted incorrectly. "
