@@ -6,6 +6,21 @@ import os
 import subprocess
 
 
+def set_disposition_default(*, videos, index):
+    """set disposition to default for the given index in every video."""
+
+    for video in videos:
+        split = video.rsplit(".", 1)
+
+        subprocess.run([
+            "ffmpeg",
+            "-i", video,
+            "-c", "copy",
+            f"-disposition:s:s:{index}", "default",
+            f"{split[0]}.final.{split[1]}",
+        ])
+
+
 def birdsite_safe(*, videos):
     """
     process a video or videos,
@@ -210,6 +225,9 @@ def run(args):
     elif command == "birdsite_safe":
         birdsite_safe(videos=args.VIDEO)
 
+    elif command == "set_disposition_default":
+        set_disposition_default(videos=args.VIDEO, index=args.index)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -220,6 +238,25 @@ def main():
     subparsers.required = True
     subparsers.dest = "command"
     subparsers.help = "command help"
+
+    set_disposition_default_command = subparsers.add_parser(
+        "set_disposition_default",
+        help="set disposition on a given track on several videos to default",
+    )
+    set_disposition_default_command.add_argument(
+        "VIDEO",
+        nargs="+",
+        help="input file(s) to convert",
+    )
+    set_disposition_default_command.add_argument(
+        "--index",
+        help=(
+            "index of subtitle track (starting at zero)"
+            " to change disposition on"
+        ),
+        type=int,
+        default=0,
+    )
 
     birdsite_safe_command = subparsers.add_parser(
         "birdsite_safe",
