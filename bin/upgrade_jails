@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+# upgrade a set of iocage jails.
+# must be run as root or as a user with
+# iocage permissions.
+
+# for some reason,
+# you might need to type in 'y' periodically,
+# because you won't see the prompt on the CLI
+# to answer 'y'.
+
+import argparse
+import os
+import subprocess
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Update a set of iocage jails defined by a text file.",
+    )
+
+    parser.add_argument(
+        "--jails-list",
+        dest="jails_list",
+        help=(
+            "file listing jails to work on. "
+            "default is $XDG_CONFIG_HOME/jails_list. "
+            "will expand shell vars and $HOME."
+        ),
+        type=str,
+        default="$XDG_CONFIG_HOME/jails_list"
+    )
+
+    args = parser.parse_args()
+
+    jail_list = os.path.expanduser(args.jails_list)
+    jail_list = os.path.expandvars(args.jails_list)
+
+    with open(jail_list, "r") as f:
+        lines = f.readlines()
+
+    for jail in lines:
+        cleaned = jail.strip()
+        print(f"updating jail {cleaned}...")
+
+        subprocess.run([
+            "iocage",
+            "pkg",
+            cleaned,
+            "upgrade",
+        ])
+
+
+if __name__ == "__main__":
+    main()
