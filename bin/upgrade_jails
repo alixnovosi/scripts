@@ -122,11 +122,29 @@ def main():
 
         # handle ports if necessary.
         if jail_obj["has_ports"]:
+
+            # fetch new ports.
             subprocess.run([
                 "iocage",
                 "exec",
                 jail_name,
                 "portsnap fetch update",
+            ])
+
+            # upgrade ports with portupgrade.
+            subprocess.run([
+                "iocage",
+                "exec",
+                jail_name,
+                "portupgrade -ai",
+            ])
+
+            # clean work directories.
+            subprocess.run([
+                "iocage",
+                "exec",
+                jail_name,
+                "portsclean -DI",
             ])
 
 
