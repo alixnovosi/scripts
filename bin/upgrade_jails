@@ -9,14 +9,38 @@
 # because you won't see the prompt on the CLI
 # to answer 'y'.
 
+# example 'jails_list.json':
+# {
+#     "__version": "1.0.0",
+#     "jails": [
+#         {
+#             "jail_name": "foo",
+#             "permit_cron_update": true,
+#             "has_ports": false
+#         },
+#         {
+#             "jail_name": "bar",
+#             "permit_cron_update": true,
+#             "has_ports": true
+#         },
+#         {
+#             "jail_name": "baz",
+#             "permit_cron_update": false,
+#             "has_ports": true
+#         }
+#     ]
+# }
+
 import argparse
+import json
 import os
 import subprocess
+import sys
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Update a set of iocage jails defined by a text file.",
+        description="Update a set of iocage jails defined by a json file.",
     )
 
     parser.add_argument(
@@ -24,11 +48,36 @@ def main():
         dest="jails_list",
         help=(
             "file listing jails to work on. "
-            "default is $XDG_CONFIG_HOME/jails_list. "
+            "default is '$XDG_CONFIG_HOME/jails_list.json'. "
             "will expand shell vars and $HOME."
         ),
         type=str,
-        default="$XDG_CONFIG_HOME/jails_list"
+        default="$XDG_CONFIG_HOME/jails_list.json",
+    )
+
+    parser.add_argument(
+        "--cron",
+        dest="cron",
+        help=(
+            "whether this is being called as part of a "
+            "cron job. jails can be configured to refuse "
+            "updates from cron jobs, if you want to only "
+            "manually update them. "
+        ),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--not-cron",
+        dest="cron",
+        help=(
+            "whether this is being called as part of a "
+            "cron job (inverse of --cron). jails can "
+            "be configured to refuse updates from cron "
+            "jobs, if you want to only manually update "
+            "them. "
+        ),
+        action="store_false",
     )
 
     args = parser.parse_args()
@@ -37,18 +86,48 @@ def main():
     jail_list = os.path.expandvars(args.jails_list)
 
     with open(jail_list, "r") as f:
-        lines = f.readlines()
+        try:
+            json_content = json.load(f)
 
-    for jail in lines:
-        cleaned = jail.strip()
-        print(f"updating jail {cleaned}...")
+        except json.decoder.JSONDecodeError as e:
+            print("Failure loading json file, have to exit.")
+            print(f"Error is\n{e}")
+            sys.exit(1)
 
-        subprocess.run([
+    for jail_obj in json_content["jails"]:
+        jail_name = jail_obj["jail_name"]
+
+        # best practice (as I understand it) for cron jobs
+        # is to be silent unless something happens.
+        # so we continue if in cron mode and we must skip
+        # a jail.
+        if not jail_obj["permit_cron_update"] and args.cron:
+            continue
+
+        command = [
             "iocage",
             "pkg",
-            cleaned,
+            jail_name,
             "upgrade",
-        ])
+        ]
+
+        # again, run silently in cron mode,
+        # unless something goes wrong.
+        if args.cron:
+            subprocess.run(command, stdout=subprocess.DEVNULL)
+
+        else:
+            print(f"updating jail {jail_name}...")
+            subprocess.run(command)
+
+        # handle ports if necessary.
+        if jail_obj["has_ports"]:
+            subprocess.run([
+                "iocage",
+                "exec",
+                jail_name,
+                "portsnap fetch update",
+            ])
 
 
 if __name__ == "__main__":
