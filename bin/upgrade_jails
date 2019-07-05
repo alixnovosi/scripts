@@ -104,24 +104,11 @@ def main():
         if args.cron and not jail_obj.get("permit_cron_update", False):
             continue
 
-        command = [
-            "iocage",
-            "pkg",
-            jail_name,
-            "upgrade",
-        ]
-
-        # again, run silently in cron mode,
-        # unless something goes wrong.
-        if args.cron:
-            subprocess.run(command, stdout=subprocess.DEVNULL)
-
-        else:
-            print(f"updating jail {jail_name}...")
-            subprocess.run(command)
-
         # handle ports if necessary.
-        # NOTE - this is less thoroughly tested.
+        # if there ARE ports, do everything through
+        # portupgrade for consistency.
+        # NOTE - this is less thoroughly tested than the
+        # pkg route
         if jail_obj["has_ports"]:
 
             # fetch new ports.
@@ -145,8 +132,25 @@ def main():
                 "iocage",
                 "exec",
                 jail_name,
-                "portsclean -DI",
+                "portsclean -Di",
             ])
+
+        else:
+            command = [
+                "iocage",
+                "pkg",
+                jail_name,
+                "upgrade",
+            ]
+
+            # again, run silently in cron mode,
+            # unless something goes wrong.
+            if args.cron:
+                subprocess.run(command, stdout=subprocess.DEVNULL)
+
+            else:
+                print(f"updating jail {jail_name}...")
+                subprocess.run(command)
 
 
 if __name__ == "__main__":
