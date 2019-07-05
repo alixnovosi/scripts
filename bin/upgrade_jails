@@ -101,7 +101,7 @@ def main():
         # is to be silent unless something happens.
         # so we continue if in cron mode and we must skip
         # a jail.
-        if not jail_obj["permit_cron_update"] and args.cron:
+        if args.cron and not jail_obj.get("permit_cron_update", False):
             continue
 
         command = [
@@ -121,6 +121,7 @@ def main():
             subprocess.run(command)
 
         # handle ports if necessary.
+        # NOTE - this is less thoroughly tested.
         if jail_obj["has_ports"]:
 
             # fetch new ports.
@@ -136,7 +137,7 @@ def main():
                 "iocage",
                 "exec",
                 jail_name,
-                "portupgrade -a",
+                "portupgrade -a -m BATCH=yes --batch",
             ])
 
             # clean work directories.
