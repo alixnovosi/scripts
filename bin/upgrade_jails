@@ -136,7 +136,7 @@ def main():
                 "iocage",
                 "exec",
                 jail_name,
-                "portupgrade -ai",
+                "portupgrade -a",
             ])
 
             # clean work directories.
