@@ -1,88 +1,200 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 
-if [ ! -z "$1" ]; then
-    COLORSCHEME="$1"
-else
-    COLORSCHEME="base16-default"
-fi
+import argparse
+import os
+import subprocess
+import sys
 
-# ensure theme is a full base16-XXXX string, so URLs work
-if [[ ! $COLORSCHEME =~ base16- ]]; then
-    COLORSCHEME="base16-$COLORSCHEME"
-fi
+def main():
+    parser = argparse.ArgumentParser(
+        description="sets up base16 themes across i3, bash, nvim",
+    )
 
-echo "received theme '$COLORSCHEME'"
+    prefix = "base16-"
 
-if [ ! -z "$XDG_CONFIG_HOME" ]; then
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        XDG_CONFIG_HOME="$HOME/Library/Preferences"
-    else
-        XDG_CONFIG_HOME="$HOME/.config"
-    fi
-fi
-# just in case
-mkdir -p "$XDG_CONFIG_HOME"
+    parser.add_argument(
+        "--colorscheme",
+        help="colorscheme to use.",
+        type=str,
+        default=f"{prefix}default",
+    )
 
-echo "writing xresources file from theme..."
+    args = parser.parse_args()
 
-# source or retrieve xresources
-# cached file or freshly fetched file
-XR_FILENAME="$COLORSCHEME-256.Xresources"
-XR_FULLPATH="$XDG_CONFIG_HOME/xresources/$XR_FILENAME"
-XR_CURRENT="$XDG_CONFIG_HOME/xresources/xresources-current"
+    # ensure theme is a full base16-XXXX string, so URLs work
+    COLORSCHEME = args.colorscheme
+    print(f"foo {COLORSCHEME[0:len(prefix)]}")
+    if COLORSCHEME[0:len(prefix)] != prefix:
+        COLORSCHEME = f"{prefix}{COLORSCHEME}"
 
-if [ -f "$XR_FULLPATH" ]; then
-    ln -f -s "$XR_FULLPATH" "$XR_CURRENT"
-    xrdb "$XR_CURRENT"
+    print(f"received theme '{COLORSCHEME}'")
 
-else
-    mkdir -p "$XDG_CONFIG_HOME/xresources"
-    URL_BASE="https://raw.githubusercontent.com/chriskempson/base16-xresources/master"
-    URL="$URL_BASE/xresources/$XR_FILENAME"
+    XDG_CONFIG_HOME = os.getenv("XDG_CONFIG_HOME", None)
+    HOME = os.environ["HOME"]
+    PLATFORM = sys.platform
 
-    # check for presence - also checking for valid theme
-    if curl --output /dev/null --silent --head --fail "$URL"; then
-        curl "$URL" --silent > "$XR_FULLPATH"
-        ln -f -s "$XR_FULLPATH" "$XR_CURRENT"
-        xrdb "$XR_CURRENT"
-    else
-        echo "failed to curl theme $COLORSCHEME, invalid theme"
-        exit 1
-    fi
-fi
+    if XDG_CONFIG_HOME is None:
 
-# to work for i3,
-# this requires set_from_resources lines in your config -
-# see github.com/alixnovosi/config/blob/master/config/i3/config
-echo "reloading i3..."
-i3 reload &> /dev/null
+        if platform == "darwin":
+            XDG_CONFIG_HOME = os.path.join(
+                HOME,
+                "Library",
+                "Preferences",
+            )
+        else:
+            XDG_CONFIG_HOME = os.path.join(
+                HOME,
+                ".config",
+            )
 
-# set neovim theme
-echo "setting neovim from theme..."
-echo "colorscheme ${COLORSCHEME}" > "$XDG_CONFIG_HOME/nvim/theme.vim"
+    # just in case
+    os.makedirs(XDG_CONFIG_HOME, exist_ok=True)
 
-echo "setting shell/tmux theme..."
-# source or retrieve shell script to config shell
-# again, either cached file or freshly fetched file
-SHELL_FILENAME="$COLORSCHEME.sh"
-SHELL_FULLPATH="$XDG_CONFIG_HOME/base16-shell/$SHELL_FILENAME"
-SHELL_CURRENT="$XDG_CONFIG_HOME/base16-shell/shell-current.sh"
+    print("writing xresources file from theme...")
+    # source or retrieve xresources
+    # cached file or freshly fetched file
+    XR_FILENAME = f"{COLORSCHEME}-256.Xresources"
+    XR_FULLPATH = os.path.join(
+        XDG_CONFIG_HOME,
+        "xresources",
+        XR_FILENAME,
+    )
+    XR_CURRENT = os.path.join(
+        XDG_CONFIG_HOME,
+        "xresources",
+        "xresources-current",
+    )
 
-if [ -f "$SHELL_FULLPATH" ]; then
-    ln -f -s "$SHELL_FULLPATH" "$SHELL_CURRENT"
-else
-    mkdir -p "$XDG_CONFIG_HOME/base16-shell"
-    URL_BASE="https://raw.githubusercontent.com/chriskempson/base16-shell/master"
-    URL="$URL_BASE/scripts/$SHELL_FILENAME"
+    if os.path.isfile(XR_FULLPATH) or os.path.islink(XR_FULLPATH):
+        os.remove(XR_CURRENT)
+        os.symlink(XR_FULLPATH, XR_CURRENT)
+        subprocess.run(["xrdb", XR_CURRENT])
 
-    # check for presence - also checking for valid theme
-    if curl --output /dev/null --silent --head --fail "$URL"; then
-        curl "$URL" --silent > "$SHELL_FULLPATH"
-        ln -f -s "$SHELL_FULLPATH" "$SHELL_CURRENT"
-    else
-        echo "failed to curl theme $COLORSCHEME- invalid theme for shell but not xresources?"
-        exit 1
-    fi
-fi
-# shellcheck source=/dev/null
-source "$SHELL_CURRENT"
+    else:
+        os.makedirs(
+            os.path.join(XDG_CONFIG_HOME, "xresources"),
+            exist_ok=True,
+        )
+        URL_BASE = "https://raw.githubusercontent.com/chriskempson/base16-xresources/master"
+        URL = f"{URL_BASE}/xresources/{XR_FILENAME}"
+
+        # check for presence - also checking for valid theme
+        returncode = 0
+        try:
+            subprocess.check_output([
+                "curl",
+                "--output",
+                "/dev/null",
+                "--silent",
+                "--head",
+                "--fail",
+                URL,
+            ])
+        except subprocess.CalledProcessError as e:
+            returncode = e.returncode
+
+        if returncode == 0:
+            with open(XR_FULLPATH, "w") as f:
+                subprocess.run(
+                    [
+                        "curl",
+                        URL,
+                        "--silent",
+                    ],
+                    stdout=f,
+                )
+            os.remove(XR_CURRENT)
+            os.symlink(XR_FULLPATH, XR_CURRENT)
+            subprocess.run(["xrdb", XR_CURRENT])
+
+        else:
+            print(f"failed to curl theme {COLORSCHEME}, invalid theme")
+            sys.exit(1)
+
+    # to work for i3,
+    # this requires set_from_resources lines in your config -
+    # see github.com/alixnovosi/config/blob/master/config/i3/config
+    print("reloading i3...")
+    subprocess.run(
+        ["i3", "reload"],
+        stdout=subprocess.DEVNULL,
+    )
+
+    # set neovim theme
+    print("setting neovim from theme...")
+    NVIM_FILE = os.path.join(
+        XDG_CONFIG_HOME,
+        "nvim",
+        "theme.vim",
+    )
+    with open(NVIM_FILE, "w") as f:
+        f.write(f"colorscheme {COLORSCHEME}")
+
+    print("setting shell/tmux theme...")
+    # source or retrieve shell script to config shell
+    # again, either cached file or freshly fetched file
+    SHELL_FILENAME = f"{COLORSCHEME}.sh"
+    SHELL_FULLPATH = os.path.join(
+        XDG_CONFIG_HOME,
+        "base16-shell",
+        SHELL_FILENAME,
+    )
+    SHELL_CURRENT = os.path.join(
+        XDG_CONFIG_HOME,
+        "base16-shell",
+        "shell-current.sh",
+    )
+
+    if os.path.isfile(SHELL_FULLPATH):
+        os.remove(SHELL_CURRENT)
+        os.symlink(SHELL_FULLPATH, SHELL_CURRENT)
+
+    else:
+        os.makedirs(
+            os.path.join(
+                XDG_CONFIG_HOME,
+                "base16-shell",
+            ),
+            exist_ok=True,
+        )
+        URL_BASE = "https://raw.githubusercontent.com/chriskempson/base16-shell/master"
+        URL = f"{URL_BASE}/scripts/{SHELL_FILENAME}"
+
+        # check for presence - also checking for valid theme
+        returncode = 0
+        try:
+            subprocess.check_output([
+                "curl",
+                "--output",
+                "/dev/null",
+                "--silent",
+                "--head",
+                "--fail",
+                URL,
+            ])
+        except subprocess.CalledProcessError as e:
+            returncode = e.returncode
+
+        if returncode == 0:
+            with open(SHELL_FULLPATH, "w") as f:
+                subprocess.run(
+                    [
+                        "curl",
+                        URL,
+                        "--silent",
+                    ],
+                    stdout=f,
+                )
+            os.remove(SHELL_CURRENT)
+            os.symlink(SHELL_FULLPATH, SHELL_CURRENT)
+
+        else:
+            print(
+                f"failed to curl theme {COLORSCHEME}- "
+                "invalid theme for shell but not xresources?"
+            )
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
