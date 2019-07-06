@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+
+import argparse
+import datetime
+import json
+import os
+import subprocess
+import sys
+
+# snapshot a set of iocage jails.
+# must be run as root or as a user with
+# iocage permissions.
+
+# example 'jails_list.json':
+# {
+#     "__version": "1.0.0",
+#     "jails": [
+#         {
+#             "jail_name": "foo"
+#         },
+#         {
+#             "jail_name": "bar"
+#         },
+#         {
+#             "jail_name": "baz",
+#             "permit_cron_snapshot": false
+#         }
+#     ]
+# }
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Snapshot a set of iocage jails defined by a json file.",
+    )
+
+    parser.add_argument(
+        "--jails-list",
+        dest="jails_list",
+        help=(
+            "file listing jails to work on. "
+            "default is '$XDG_CONFIG_HOME/jails_list.json'. "
+            "will expand shell vars and $HOME."
+        ),
+        type=str,
+        default="$XDG_CONFIG_HOME/jails_list.json",
+    )
+
+    parser.add_argument(
+        "--cron",
+        dest="cron",
+        help=(
+            "whether this is being called as part of a "
+            "cron job. jails can be configured to refuse "
+            "updates from cron jobs, if you want to only "
+            "manually snapshot them. "
+        ),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--not-cron",
+        dest="cron",
+        help=(
+            "whether this is being called as part of a "
+            "cron job (inverse of --cron). jails can "
+            "be configured to refuse updates from cron "
+            "jobs, if you want to only manually snapshot "
+            "them. "
+        ),
+        action="store_false",
+    )
+
+    args = parser.parse_args()
+
+    jail_list = os.path.expanduser(args.jails_list)
+    jail_list = os.path.expandvars(args.jails_list)
+
+    with open(jail_list, "r") as f:
+        try:
+            json_content = json.load(f)
+
+        except json.decoder.JSONDecodeError as e:
+            print("Failure loading json file, have to exit.")
+            print(f"Error is\n{e}")
+            sys.exit(1)
+
+    now = datetime.datetime.now()
+    datestring = now.strftime("%Y-%m-%dT%H:%M")
+
+    for jail_obj in json_content["jails"]:
+        jail_name = jail_obj["jail_name"]
+
+        # best practice (as I understand it) for cron jobs
+        # is to be silent unless something happens.
+        # so we continue if in cron mode and we must skip
+        # a jail.
+        if args.cron and not jail_obj.get("permit_cron_snapshot", False):
+            continue
+
+        command = [
+            "iocage",
+            "snapshot",
+            "-n", f"{jail_name}-{datestring}",
+            jail_name,
+        ]
+
+        # again, run silently in cron mode,
+        # unless something goes wrong.
+        if args.cron:
+            subprocess.run(command, stdout=subprocess.DEVNULL)
+
+        else:
+            print(f"snapshotting jail {jail_name}...")
+            subprocess.run(command)
+
+
+if __name__ == "__main__":
+    main()
