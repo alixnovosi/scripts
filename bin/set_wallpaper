@@ -1,45 +1,106 @@
-#!/bin/sh
-#-------------------------------------------------------------------------------------------------#
-# author:  Andrew Michaud - https://drew.life                                                     #
-# file:    set_wallpaper                                                                          #
-# purpose: script to set wallpaper with feh with some randomness                                  #
-# updated: 2019-05-22                                                                             #
-# license: ISC                                                                                    #
-#-------------------------------------------------------------------------------------------------#
-if [ "$(pgrep -c Xorg)" = 0 ]; then
-    echo "Need X!"
-    exit 1
-fi
+#!/usr/bin/env python3
 
-if [ -z "$1" ]; then
-    echo "Must provide directory!"
-    echo "usage: set_wallpaper [wallpaper_directory] [shuf]"
-    echo "shuf as second argument is optional and regenerates wallpaper list."
-    exit 1
-fi
+import argparse
+import os
+import subprocess
+import sys
 
-if [ -z "$XDG_CONFIG_HOME" ]; then
-    XDG_CONFIG_HOME="$HOME/.config"
-fi
-PAPER_HOME="$XDG_CONFIG_HOME/wallpaper"
+def main():
+    parser = argparse.ArgumentParser(
+        description="set wallpaper with feh with some randomness",
+    )
 
-if [ ! -d "$PAPER_HOME" ]; then
-    echo "Creating wallpaper script dir $PAPER_HOME"
-    mkdir -p "$PAPER_HOME"
-fi
+    parser.add_argument(
+        "DIRECTORY",
+        help="directory wallpapers are in",
+        type=str,
+    )
 
-if [ ! -f "$XDG_CONFIG_HOME/wallpaper/list" ] || [ "$2" = "shuf" ]; then
-    echo "Updating wallpaper script wallpaper list file at $PAPER_HOME/list"
-    find "$1" -type f | shuf > "$PAPER_HOME/list"
-fi
+    parser.add_argument(
+        "--shuf",
+        action="store_true",
+        help="whether to shuffle and regenerate wallpaper list",
+    )
 
-# Set first listed wallpaper as current wallpaper, then put it at the back of the list.
-FIRST=$(head -n1 "$PAPER_HOME/list")
+    parser.add_argument(
+        "--no-shuf",
+        action="store_false",
+        help="whether to shuffle and regenerate wallpaper list, inverse of shuf",
+    )
 
-echo "Setting wallpaper to $FIRST"
-feh --no-fehbg --bg-max "$FIRST"
+    args = parser.parse_args()
 
-echo "Updating list of papers to push $FIRST to end."
-tail -n +2 "$PAPER_HOME/list" > "$PAPER_HOME/tmp"
-cat "$PAPER_HOME/tmp" > "$PAPER_HOME/list"
-echo "$FIRST" >> "$PAPER_HOME/list"
+    try:
+        subprocess.check_output(["pgrep", "-c", "Xorg"])
+    except subprocess.CalledProcessError:
+        print("X must be running to set wallpaper, exiting.")
+        sys.exit(1)
+
+    XDG_CONFIG_HOME = os.getenv("XDG_CONFIG_HOME", None)
+    HOME = os.environ["HOME"]
+    PLATFORM = sys.platform
+
+    if XDG_CONFIG_HOME is None:
+
+        if platform == "darwin":
+            XDG_CONFIG_HOME = os.path.join(
+                HOME,
+                "Library",
+                "Preferences",
+            )
+        else:
+            XDG_CONFIG_HOME = os.path.join(
+                HOME,
+                ".config",
+            )
+
+    PAPER_HOME = os.path.join(XDG_CONFIG_HOME, "wallpaper")
+    if not os.path.isdir(PAPER_HOME):
+        print(f"creating wallpaper script dir {PAPER_HOME}...")
+        os.makedirs(PAPER_HOME, exist_ok=True)
+
+    PAPER_FILENAME = os.path.join(PAPER_HOME, "list")
+
+    # create or update PAPER_FILENAME if necessary.
+    if not os.path.isfile(PAPER_FILENAME) or args.shuf:
+        print(f"updating wallpaper script wallpaper list file at {PAPER_FILENAME}...")
+        found = subprocess.Popen(
+            ["find", args.DIRECTORY, "-type", "f"],
+            universal_newlines=True,
+            stdout=subprocess.PIPE,
+        )
+        with open(PAPER_FILENAME, "w") as f:
+            shuf = subprocess.Popen(
+                ["shuf"],
+                encoding="UTF-8",
+                stdin=found.stdout,
+                stdout=f,
+            )
+
+            shuf_stdout, _ = shuf.communicate()
+
+
+    # load filenames into memory and shuffle, for later writing.
+    filenames = []
+    with open(PAPER_FILENAME, "r") as f:
+        filenames.append(f.readline().strip())
+
+    first = filenames[0]
+    filenames = filenames[1:]
+    filenames.append(first)
+
+    print(f"setting wallpaper to {first}...")
+    subprocess.run([
+        "feh",
+        "--no-fehbg", "--bg-max",
+        first,
+    ])
+
+    print(f"updating list of papers to push {first} to end...")
+    with open(PAPER_FILENAME, "w") as f:
+        for filename in filenames:
+            f.write(filename)
+
+
+if __name__ == "__main__":
+    main()
