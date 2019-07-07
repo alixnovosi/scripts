@@ -1,15 +1,77 @@
-#!/bin/zsh
+#!/usr/bin/env python3
 
-shopt -s expand_aliases
-source $XDG_CONFIG_HOME/zsh/.zshrc
+import os
+import subprocess
+import sys
 
-SESSION_NAME="moosic"
+def main():
+    xdg_config_home = os.getenv("XDG_CONFIG_HOME", None)
+    home = os.environ["HOME"]
+    platform = sys.platform
 
-tmux new-session -d -c "$HOME/music/podcasts" -s "$SESSION_NAME" "ncmpcpp"
-tmux new-window -n "puckfetcher" "puckfetcher menu"
-tmux new-window -n "sync" "zsh"
-tmux new-window -n "config" "nvim $XDG_CONFIG_HOME/puckfetcher/config.yaml"
-tmux new-window -n "mpd-start" "mpd &; sleep 0.001; exit"
-tmux select-window -t 0
+    if xdg_config_home is None:
+        if platform == "darwin":
+            xdg_config_home = os.path.join(
+                home,
+                "Library",
+                "Preferences",
+            )
 
-tmux attach -t "$SESSION_NAME"
+        else:
+            xdg_config_home = os.path.join(
+                home,
+                ".config",
+            )
+
+    tmux_conf_location = os.path.join(xdg_config_home, "tmux", "tmux.conf")
+    session_name = "moosic"
+
+    subprocess.check_output([
+        "tmux",
+        "new-session",  # create new tmux session (tmux subcommand)
+        "-d",  # detach after creation
+        "-c", os.path.join(home, "music", "podcasts"),  # working directory
+        "-s", session_name,  # session name
+        "ncmpcpp",  # command to run
+    ])
+
+    subprocess.check_output([
+        "tmux",
+        "new-window",  # create window in current session (tmux subcommand)
+        "-n", "puckfetcher",  # window name
+        "puckfetcher menu",  # command to run
+    ])
+
+    subprocess.check_output([
+        "tmux",
+        "new-window",
+        "-n", "config",
+        f"nvim {os.path.join(xdg_config_home, 'puckfetcher', 'config.yaml')}",
+    ])
+
+    # only start mpd if it's not already running
+    try:
+        subprocess.check_output(["pgrep", "-c", "mpd"])
+    except subprocess.CalledProcessError:
+        subprocess.check_output([
+            "tmux",
+            "new-window",
+            "-n", "mpd-start",
+            "mpd &; sleep 0.001; exit",  # I don't know why the sleep is necessary, it just is.
+        ])
+
+    subprocess.check_output([
+        "tmux",
+        "select-window",
+        "-t", "0",  # window to select
+    ])
+
+    subprocess.check_output([
+        "tmux",
+        "attach",
+        "-t", session_name,
+    ])
+
+
+if __name__ == "__main__":
+    main()
