@@ -1,18 +1,57 @@
-#!/bin/sh
+#!/usr/bin/env python3
 
-if [ -z "$1" ]; then
-    LIST="$XDG_CONFIG_HOME/homebrew/head_taps"
-else
-    LIST="$1"
-fi
+import argparse
+import os
+import subprocess
+import sys
 
-echo "Updating head taps."
 
-# Simple script to update all --HEAD taps you have set up with Homebrew.
-while read -r tap; do
-    echo "Running $brew_command"
-    brew_command="brew reinstall --HEAD ${tap} --with-ssl"
-    $brew_command || break
-done < "$LIST"
+def main:
+    parser = argparse.ArgumentParser(
+        description="update Homebrew head taps which are defined in a file",
+    )
 
-echo "Done updating head taps."
+    parser.add_argument(
+        "--tap-list",
+        dest="tap_list",
+        help=(
+            "list of head taps. "
+            "defaults to $XDG_CONFIG_HOME/homebrew/head_taps"
+        )
+        default=None,
+        type=str,
+    )
+
+    args = parser.parse_args()
+
+    tap_list = args.tap_list
+    if tap_list is None:
+        home = os.environ["HOME"]
+        if sys.platform == "darwin":
+            tap_list = os.path.join(home, "Library", "Preferences", "homebrew", "head_taps")
+
+        else:
+            tap_list = os.path.join(home, ".config", "homebrew", "head_taps")
+
+    print("updating head taps...")
+
+    with open(tap_list, "r") as f:
+        taps = f.readlines()
+
+    for tap in taps:
+        brew_command = [
+            "brew",
+            "reinstall",
+            "--HEAD"
+            tap,
+            "--with-ssl",
+        ]
+
+        print(f"running {' '.join(brew_command)}..."
+        subprocess.check_output(command)
+
+    print("done updating head taps...")
+
+
+if __name__ == "__main__":
+    main()
