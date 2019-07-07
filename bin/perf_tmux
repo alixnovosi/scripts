@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+
+# TODO see about a config file format to make these tmux scripts easier,
+# slash less repetitive.
+def main():
+    home = os.environ["HOME"]
+    session_name = "perf"
+
+    subprocess.check_output([
+        "tmux",
+        "new-session",  # create new tmux session (tmux subcommand)
+        "-d",  # detach after creation
+        "-c", os.path.join(home),  # working directory
+        "-s", session_name,  # session name
+        "htop",  # command to run
+    ])
+
+    subprocess.check_output([
+        "tmux",
+        "select-window",
+        "-t", "0",  # window to select
+    ])
+
+    subprocess.check_output([
+        "tmux",
+        "attach",
+        "-t", session_name,
+    ])
+
+
+if __name__ == "__main__":
+    main()
