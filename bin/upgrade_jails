@@ -109,8 +109,7 @@ def main():
         # portupgrade for consistency.
         # NOTE - this is less thoroughly tested than the
         # pkg route
-        if jail_obj["has_ports"]:
-
+        if jail_obj.get("has_ports", False):
             # fetch new ports.
             subprocess.run([
                 "iocage",
