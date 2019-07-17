@@ -65,6 +65,7 @@ def main():
             "manually update them. "
         ),
         action="store_true",
+        default=False,
     )
 
     parser.add_argument(
@@ -78,6 +79,14 @@ def main():
             "them. "
         ),
         action="store_false",
+    )
+
+    parser.add_argument(
+        "--perform-freebsd-update",
+        dest="perform_freebsd_update",
+        help="whether to perform FreeBSD version update in addition to pkg update.",
+        action="store_true",
+        default=False,
     )
 
     args = parser.parse_args()
@@ -148,7 +157,28 @@ def main():
                 subprocess.run(command, stdout=subprocess.DEVNULL)
 
             else:
-                print(f"updating jail {jail_name}...")
+                print(
+                    "\n"
+                    f"updating jail {jail_name}..."
+                )
+                subprocess.run(command)
+
+        if args.perform_freebsd_update:
+
+            command = [
+                "iocage",
+                "update",
+                jail_name,
+            ]
+
+            if args.cron:
+                subprocess.run(command, stdout=subprocess.DEVNULL)
+
+            else:
+                print(
+                    "\n"
+                    f"performing freebsd update on {jail_name}"
+                )
                 subprocess.run(command)
 
 
