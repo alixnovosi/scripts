@@ -42,7 +42,7 @@ def main():
 
     if XDG_CONFIG_HOME is None:
 
-        if platform == "darwin":
+        if PLATFORM == "darwin":
             XDG_CONFIG_HOME = os.path.join(
                 HOME,
                 "Library",
