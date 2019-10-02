@@ -1,0 +1,372 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+# must be run as root.
+def main():
+    cwd = os.path.abspath(os.path.curdir)
+
+    parser = setup_parser()
+    args = parser.parse_args()
+
+    # load config
+    # TODO fail more gracefully if there's a problem
+    if args.config is not None:
+        with open(args.config, "r") as f:
+            config = json.loads(f.read())
+
+    github_base_url = config.get("github_base_url", None)
+    credentials_base_path = config.get(
+        "credentials_base_path",
+        None,
+    )
+
+    # require bot config to exist if config file supplied.
+    bot_config = None
+    if config.get("jails", None) is not None:
+        for jail in config.get("jails"):
+            name = jail.get("jail_name", None)
+            if name is not None and name == args.NAME:
+                bot_config = jail
+                break
+
+    if bot_config is None:
+        parser.print_usage()
+        print(
+            f"Config for {args.NAME} must exist "
+            "if config file supplied."
+        )
+        sys.exit(1)
+
+    # try to set credentials dir,
+    # and fail if we cannot set it.
+    if args.credentials_dir is None and \
+            credentials_base_path is not None:
+        args.credentials_dir = os.path.join(
+            credentials_base_path,
+            args.NAME,
+            "SECRETS",
+        )
+
+    if args.credentials_dir is None:
+        parser.print_usage()
+        print(
+            "You must provide either a --credentials-dir argument, "
+            "or a 'credentials_base_path in the config file."
+        )
+        sys.exit(1)
+
+    # repeat process for github URL.
+    if args.git_repo_url is None and github_base_url is not None:
+        args.git_repo_url = f"{github_base_url}{args.NAME}"
+
+    if args.git_repo_url is None:
+        parser.print_usage()
+        print(
+            "You must provide either a --git-repo-url argument, "
+            "or a 'github_base_url in the config file."
+        )
+        sys.exit(1)
+
+    # get config metadata.
+    meta = config.get("meta", {})
+
+    # get bot category metadata.
+    bot_meta = meta.get(bot["type"], {})
+
+    # template and user dir defaulted from metadata in config.
+    template = args.template
+    if template is None:
+        template = bot_meta.get("template", None)
+
+    if template is None:
+        print_usage()
+        print(
+            "You must provide either a --template argument, "
+            "or a 'template' in the bot metadata in the "
+            "config file."
+        )
+        sys.exit(1)
+
+    # TODO maybe this should be a CLI arg or something./
+    # set user, user dir.
+    user = bot_meta.get("user", None)
+    if user is None:
+        print_usage()
+        print(
+            "You must provide 'user' in the bot metadata in the "
+            "config file."
+        )
+        sys.exit(1)
+
+    user_dir = bot_meta.get("user_dir", None)
+    if user_dir is None:
+        print_usage()
+        print(
+            "You must provide 'user' in the bot metadata in the "
+            "config file."
+        )
+        sys.exit(1)
+
+    # IP4/IP6 may be left out.
+    if args.ip4_addr is None and \
+            bot_config.get("ip4_addr", None) is not None:
+        args.ip4_addr = bot_config["ip4_addr"]
+
+    if args.ip6_addr is None and \
+            bot_config.get("ip6_addr", None) is not None:
+        args.ip6_addr = bot_config["ip6_addr"]
+
+    # additional git repos ALSO optional.
+    if args.additional_git_repo_urls is None:
+        args.additional_git_repo_urls =
+        bot_config.get("additional_git_repo_urls", [])
+
+    ##########################################################
+    #               TIME TO BUILD JAIL                       #
+    ##########################################################
+    JAIL_ROOT = os.path.join(
+        os.path.sep,
+        "iocage",
+        "jails",
+        args.NAME,
+        "root",
+    )
+
+    print(
+        "\n"
+        "CREATING JAIL..."
+    )
+    subprocess.check_output([
+        "iocage",
+        "create",
+        "-t", template,
+        "-n", args.NAME,
+    ])
+
+    if args.ip4_addr is not None and args.ip6_addr is not None:
+        print(
+            "\n"
+            "SETTING UP JAIL IPS..."
+        )
+
+        if args.ip4_addr is not None:
+            subprocess.check_output([
+                "iocage",
+                "set",
+                f"ip4_addr=lo1|{args.ip4_addr}",
+                args.NAME,
+            ])
+
+        if args.ip6_addr is not None:
+            subprocess.check_output([
+                "iocage",
+                "set",
+                f"ip6_addr=lo1|{args.ip6_addr}",
+                args.NAME,
+            ])
+
+    print(
+        "\n"
+        "SETTING JAIL TO START ON BOOT..."
+    )
+    subprocess.check_output([
+        "iocage",
+        "set",
+        "boot=on",
+        args.NAME,
+    ])
+
+    if args.ip4_addr is not None and args.ip6_addr is not None:
+        print(
+            "\n",
+            "RESTARTING JAIL TO LOCK IP CHANGES..."
+        )
+        subprocess.check_output([
+            "iocage",
+            "restart",
+            args.NAME,
+        ])
+
+    print(
+        "\n",
+        "FORCING GIT INSTALL..."
+    )
+    subprocess.check_output([
+        "iocage",
+        "pkg",
+        args.NAME,
+        "install",
+        "-y", "git",
+    ])
+
+    jail_clonepoint = os.path.join(
+        JAIL_ROOT,
+        user_dir,
+        "python3_bot",
+    )
+    print(
+        "\n"
+        f"CLONING {args.git_repo_url} to {jail_clonepoint}..."
+    )
+
+    subprocess.check_output([
+        "git",
+        "clone",
+        args.git_repo_url,
+        jail_clonepoint,
+    ])
+
+    credentials_dir_path = os.path.join(
+        JAIL_ROOT,
+        user_dir,
+        "python3_bot",
+        args.NAME,
+        "SECRETS",
+    )
+    print(
+        "\n"
+        "COPYING credentials from "
+        f"{args.credentials_dir} to {credentials_dir_path}..."
+    )
+
+    subprocess.check_output([
+        "rsync",
+        "-azvh",
+        "--progress", "--partial",
+        f"{args.credentials_dir}{os.path.sep}",
+        credentials_dir_path,
+    ])
+
+    print(
+        "\n"
+        f"CHOWN-ING {user_dir}"
+    )
+    subprocess.check_output([
+        "iocage",
+        "exec",
+        args.NAME,
+        f"chown -R {user}:{user} {user_dir}",
+    ])
+
+    if args.additional_git_repo_urls is not None and \
+            len(args.additional_git_repo_urls) > 0:
+        print(
+            "\n"
+            "CLONING other repos in "
+            f"{args.additional_git_repo_urls}..."
+        )
+        for repo_url in args.additional_git_repo_urls:
+            repo_name = repo_url.rsplit("/", 1)[-1]
+            jail_clonepoint = os.path.join(
+                user_dir,
+                repo_name,
+            )
+
+            subprocess.check_output([
+                "iocage",
+                "exec",
+                args.NAME,
+                f"git clone {repo_url} {jail_clonepoint}",
+            ])
+
+    print("done!")
+
+def setup_parser():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Deploy python3 jail based on "
+            "python3-bot-template template."
+        ),
+    )
+
+    parser.add_argument(
+        "NAME",
+        help="name for the jail. required.",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--template",
+        help=(
+            "template to use as base. "
+            "will otherwise use one defined "
+            "here in the script."
+        ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--credentials-dir",
+        dest="credentials_dir",
+        help=(
+            "directory of credentials for this bot. "
+            "will be copied to "
+            "'<BOT_HOME_DIR>/SECRETS' "
+            "MUST either be supplied on command-line "
+            "or in config file."
+        ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--git-repo-url",
+        dest="git_repo_url",
+        help=(
+            "git repo to clone into the jail at the path "
+            "'<BOT_HOME_DIR>'. "
+            "MUST either be supplied on command-line or in "
+            "config file."
+        ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--additional-git-repo-urls",
+        dest="additional_git_repo_urls",
+        help=(
+            "additional git repos to clone into the jail, "
+            f"under '<BOT_HOME_DIR>/<REPO-NAME>'",
+        type=str,
+        nargs="+",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--ip4-addr",
+        dest="ip4_addr",
+        help="ip4 address to use for the jail.",
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--ip6-addr",
+        dest="ip6_addr",
+        help="ip6 address to use for the jail.",
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--config",
+        help=(
+            "config file to supply options. "
+            "command-line options will override corresponding "
+            "config file options."
+        ),
+        type=str,
+        default=None,
+    )
+
+    return parser
+
+if __name__ == "__main__":
+    main()
