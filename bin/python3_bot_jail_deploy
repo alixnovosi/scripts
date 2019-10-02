@@ -42,6 +42,12 @@ def main():
         )
         sys.exit(1)
 
+    # get config metadata.
+    meta = config.get("meta", {})
+
+    # get bot category metadata.
+    bot_meta = meta.get(bot["type"], {})
+
     # try to set credentials dir,
     # and fail if we cannot set it.
     if args.credentials_dir is None and \
@@ -56,7 +62,7 @@ def main():
         parser.print_usage()
         print(
             "You must provide either a --credentials-dir argument, "
-            "or a 'credentials_base_path in the config file."
+            "or a 'credentials_base_path' in the config file."
         )
         sys.exit(1)
 
@@ -68,15 +74,21 @@ def main():
         parser.print_usage()
         print(
             "You must provide either a --git-repo-url argument, "
-            "or a 'github_base_url in the config file."
+            "or a 'github_base_url' in the config file."
         )
         sys.exit(1)
 
-    # get config metadata.
-    meta = config.get("meta", {})
+    # and jail_root
+    if args.jail_root is None:
+        args.jail_root = meta.get("jail_root", None)
 
-    # get bot category metadata.
-    bot_meta = meta.get(bot["type"], {})
+    if args.jail_root is None:
+        parser.print_usage()
+        print(
+            "You must provide either a --jail-root" argument, "
+            "or a 'jail_root' in the config metadata."
+        )
+        sys.exit(1)
 
     # template and user dir defaulted from metadata in config.
     template = args.template
@@ -130,9 +142,7 @@ def main():
     #               TIME TO BUILD JAIL                       #
     ##########################################################
     JAIL_ROOT = os.path.join(
-        os.path.sep,
-        "iocage",
-        "jails",
+        args.jail_root,
         args.NAME,
         "root",
     )
@@ -324,6 +334,14 @@ def setup_parser():
             "MUST either be supplied on command-line or in "
             "config file."
         ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--jail-root",
+        dest="jail_root",
+        help="root of iocage installation,
         type=str,
         default=None,
     )

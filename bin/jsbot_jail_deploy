@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import subprocess
+
+# must be run as root.
+def main():
+    cwd = os.path.abspath(os.path.curdir)
+
+    parser = setup_parser()
+    args = parser.parse_args()
+
+    # require bot config to exist if config file supplied.
+    bot_config = None
+    if config.get("jails", None) is not None:
+        for jail in config.get("jails"):
+            name = jail.get("jail_name", None)
+            if name is not None and name == args.NAME:
+                bot_config = jail
+                break
+
+    if bot_config is None:
+        parser.print_usage()
+        print(
+            f"Config for {args.NAME} must exist "
+            "if config file supplied."
+        )
+        sys.exit(1)
+
+    # get config metadata.
+    meta = config.get("meta", {})
+
+    # get bot category metadata.
+    bot_meta = meta.get(bot["type"], {})
+
+    # template and user dir defaulted from metadata in config.
+    template = args.template
+    if template is None:
+        template = bot_meta.get("template", None)
+
+    if template is None:
+        print_usage()
+        print(
+            "You must provide either a --template argument, "
+            "or a 'template' in the bot metadata in the "
+            "config file."
+        )
+        sys.exit(1)
+
+    # TODO maybe this should be a CLI arg or something./
+    # set user, user dir.
+    user = bot_meta.get("user", None)
+    if user is None:
+        print_usage()
+        print(
+            "You must provide 'user' in the bot metadata in the "
+            "config file."
+        )
+        sys.exit(1)
+
+    user_dir = bot_meta.get("user_dir", None)
+    if user_dir is None:
+        print_usage()
+        print(
+            "You must provide 'user' in the bot metadata in the "
+            "config file."
+        )
+        sys.exit(1)
+
+    git_repo_location = args.git_repo_location
+    if git_repo_location is None:
+        git_repo_location = os.path.join(curdir, args.NAME)
+
+    # just in case - I think mount only wants full paths.
+    git_repo_location = os.path.abspath(git_repo_location)
+
+    js_vars_location = args.js_vars_location
+    if js_vars_location is None:
+        js_vars_location = os.path.join(
+            curdir,
+            f"{args.NAME}_js_vars",
+        )
+
+    # IP4/IP6 may be left out.
+    if args.ip4_addr is None and \
+            bot_config.get("ip4_addr", None) is not None:
+        args.ip4_addr = bot_config["ip4_addr"]
+
+    if args.ip6_addr is None and \
+            bot_config.get("ip6_addr", None) is not None:
+        args.ip6_addr = bot_config["ip6_addr"]
+
+    # just in case.
+    js_vars_location = os.path.abspath(js_vars_location)
+
+    ##########################################################
+    #               TIME TO BUILD JAIL                       #
+    ##########################################################
+    print("\nCREATING JAIL...\n")
+    subprocess.run([
+        "iocage",
+        "create",
+        "-t", template,
+        "-n", args.NAME,
+    ])
+
+    if args.ip4_addr is not None and args.ip6_addr is not None:
+        print("\nSETTING UP JAIL IPS...")
+
+        if args.ip4_addr is not None:
+            subprocess.check_output([
+                "iocage",
+                "set",
+                f"ip4_addr=lo1|{args.ip4_addr}",
+                args.NAME,
+            ])
+
+        if args.ip6_addr is not None:
+            subprocess.check_output([
+                "iocage",
+                "set",
+                f"ip6_addr=lo1|{args.ip6_addr}",
+                args.NAME,
+            ])
+
+    print("\nSETTING JAIL TO START ON BOOT...")
+    subprocess.check_output([
+        "iocage",
+        "set",
+        "boot=on",
+        args.NAME,
+    ])
+
+    jail_mountpoint = os.path.join(
+        args.jail_root,
+        args.NAME,
+        "root",
+        user_dir,
+        user,
+    )
+    print(f"\nMOUNTING {git_repo_location} to {jail_mountpoint}\n")
+    subprocess.run([
+        "mount",
+        "-t", "nullfs",
+        git_repo_location,
+        jail_mountpoint,
+    ])
+
+    js_vars_endpoint = os.path.join(
+        args.jail_root,
+        args.NAME,
+        "root",
+        user_dir,
+        ".config",
+        "js_vars",
+    )
+    print(f"\nCOPYING IN JS_VARS from {js_vars_endpoint}\n")
+
+    subprocess.run([
+        "rsync",
+        "-avzh",
+        "--progress", "--partial",
+        js_vars_location,
+        js_vars_endpoint,
+    ])
+
+    print(
+        "\n"
+        f"CHOWN-ING {user_dir}"
+    )
+    subprocess.check_output([
+        "iocage",
+        "exec",
+        args.NAME,
+        f"chown -R {user}:{user} {user_dir}",
+    ])
+
+def setup_parser():
+    parser = argparse.ArgumentParser(
+        description="Deploy jsbot jail based on js-bot-template template.",
+    )
+
+    parser.add_argument(
+        "NAME",
+        help="name for the jail. required.",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--template",
+        help=(
+            "template to use as base. "
+            "will otherwise use one defined "
+            "here in the script."
+        ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--git-repo-location",
+        dest="git_repo_location",
+        help=(
+            "git repo to nullfs mount into the jail. "
+            "if not provided, will try jail name, "
+            "in the current directory. "
+        ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--js-vars-location",
+        dest="js_vars_location",
+        help=(
+            "js_vars file that should be copied into this jail"
+            "if not provided, will try <jail_name>_js_vars, "
+            "in the current directory. "
+        ),
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--ip4-addr",
+        dest="ip4_addr",
+        help="ip4 address to use for the jail.",
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--ip6-addr",
+        dest="ip6_addr",
+        help="ip6 address to use for the jail.",
+        type=str,
+        default=None,
+    )
+
+
+if __name__ == "__main__":
+    main()
