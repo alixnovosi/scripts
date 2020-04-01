@@ -191,29 +191,6 @@ def main():
         args.NAME,
     ])
 
-    if args.ip4_addr is not None and args.ip6_addr is not None:
-        print(
-            "\n",
-            "RESTARTING JAIL TO LOCK IP CHANGES..."
-        )
-        subprocess.check_output([
-            "iocage",
-            "restart",
-            args.NAME,
-        ])
-
-    print(
-        "\n",
-        "FORCING GIT INSTALL..."
-    )
-    subprocess.check_output([
-        "iocage",
-        "pkg",
-        args.NAME,
-        "install",
-        "-y", "git",
-    ])
-
     jail_clonepoint = os.path.join(
         JAIL_ROOT,
         user_dir,
