@@ -46,7 +46,7 @@ def main():
     meta = config.get("meta", {})
 
     # get bot category metadata.
-    bot_meta = meta.get(bot["type"], {})
+    bot_meta = meta.get(bot_config["type"], {})
 
     # try to set credentials dir,
     # and fail if we cannot set it.
@@ -135,8 +135,7 @@ def main():
 
     # additional git repos ALSO optional.
     if args.additional_git_repo_urls is None:
-        args.additional_git_repo_urls =
-        bot_config.get("additional_git_repo_urls", [])
+        args.additional_git_repo_urls = bot_config.get("additional_git_repo_urls", [])
 
     ##########################################################
     #               TIME TO BUILD JAIL                       #
@@ -235,6 +234,12 @@ def main():
     )
     subprocess.check_output([
         "iocage",
+        "start",
+        args.NAME,
+    ])
+
+    subprocess.check_output([
+        "iocage",
         "exec",
         args.NAME,
         f"chown -R {user}:{user} {user_dir}",
@@ -318,7 +323,7 @@ def setup_parser():
     parser.add_argument(
         "--jail-root",
         dest="jail_root",
-        help="root of iocage installation,
+        help="root of iocage installation",
         type=str,
         default=None,
     )
@@ -328,7 +333,8 @@ def setup_parser():
         dest="additional_git_repo_urls",
         help=(
             "additional git repos to clone into the jail, "
-            f"under '<BOT_HOME_DIR>/<REPO-NAME>'",
+            f"under '<BOT_HOME_DIR>/<REPO-NAME>'"
+        ),
         type=str,
         nargs="+",
         default=None,
