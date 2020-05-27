@@ -40,6 +40,7 @@ def birdsite_safe(*, videos):
             "-c:v", "libx264",
             "-crf", "25",
             "-c:a", "aac",
+            "-pix_fmt", "yuv420p",
             output_filename,
         ])
 
