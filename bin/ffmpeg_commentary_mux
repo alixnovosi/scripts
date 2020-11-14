@@ -85,7 +85,7 @@ import subprocess
 # 5) Add final commentary track to movie.
 #
 # Run:
-# $ ffmpeg_commentary_mux CONTAINER_FILENAME COMMENTARY_FILENAME \
+# $ ffmpeg_commentary_mux commentary_mux COMMENTARY_FILENAME CONTAINER_FILENAME \
 # [--output-filename OUTPUT]
 #
 # Output filename is optional, it'll use
@@ -158,7 +158,7 @@ def extract(*, video_filename, output_filename, track_index):
         "ffmpeg",
         "-i", video_filename,
         "-map", f"0:a:{track_index}",
-        "-vol", "64",
+        "-vol", "75",
         "-af", "pan=stereo|FL=FC+0.30*FL+0.30*BL|FR=FC+0.30*FR+0.30*BR",
         output_filename,
     ]
