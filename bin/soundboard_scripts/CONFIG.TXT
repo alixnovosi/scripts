@@ -1,0 +1,20 @@
+deejmode=false
+deejSensitivity=32
+
+EncoderConstant=3
+KnobButton=Mute
+KnobCW=VolumeUp
+KnobCCW=VolumeDown
+
+Button1=F13
+Button2=F14
+Button3=F15
+Button4=F16
+Button5=F17
+
+Button1Hold=Shift+F13
+Button2Hold=Shift+F14
+Button3Hold=Shift+F15
+Button4Hold=Shift+F16
+Button5Hold=Shift+F17
+/Documentation can be found at https://www.pikatea.com/pages/pikatea-macropad-user-guide

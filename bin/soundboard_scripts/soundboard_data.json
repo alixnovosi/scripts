@@ -1,0 +1,32 @@
+{
+    "version": "1.0.0",
+    "default": {
+            "name": "",
+            "filename": "test.wav",
+            "description": ""
+    },
+    "bank_descriptions": [
+        "general",
+        "games"
+    ],
+    "sounds": [
+        {
+            "slot": 1,
+            "name": "",
+            "filename": "foo.wav",
+            "description": ""
+        },
+        {
+            "slot": 9,
+            "name": "",
+            "filename": "baz.wav",
+            "description": ""
+        },
+        {
+            "slot": 10,
+            "name": "",
+            "filename": "",
+            "description": ""
+        }
+    ]
+}
