@@ -1,32 +1,64 @@
 {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "default": {
             "name": "",
             "filename": "test.wav",
             "description": ""
     },
-    "bank_descriptions": [
-        "general",
-        "games"
-    ],
-    "sounds": [
+    "banks": [
         {
-            "slot": 1,
-            "name": "",
-            "filename": "foo.wav",
-            "description": ""
+            "bank_id": 1,
+            "description": "general",
+            "slots": [
+                {
+                    "slot": 1,
+                    "name": "",
+                    "filename": "foo.wav",
+                    "description": ""
+                },
+                {
+                    "slot": 5,
+                    "name": "",
+                    "filename": "foo.wav",
+                    "description": ""
+                }
+            ]
         },
         {
-            "slot": 9,
-            "name": "",
-            "filename": "baz.wav",
-            "description": ""
+            "bank_id": 3,
+            "description": "general",
+            "slots": [
+                {
+                    "slot": 2,
+                    "name": "",
+                    "filename": "baz.wav",
+                    "description": ""
+                },
+                {
+                    "slot": 6,
+                    "name": "",
+                    "filename": "baz.wav",
+                    "description": ""
+                }
+            ]
         },
         {
-            "slot": 10,
-            "name": "",
-            "filename": "",
-            "description": ""
+            "bank_id": 9,
+            "description": "aaaah",
+            "slots": [
+                {
+                    "slot": 3,
+                    "name": "",
+                    "filename": "",
+                    "description": ""
+                },
+                {
+                    "slot": 7,
+                    "name": "",
+                    "filename": "",
+                    "description": ""
+                }
+            ]
         }
     ]
 }
