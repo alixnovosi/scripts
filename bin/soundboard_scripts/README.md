@@ -44,6 +44,7 @@ but I wanted to get this out there first.
 The mode switch takes a bit of getting used to,
 but it's plenty fast when you do,
 and I enjoy the huge space I can fill up with silly sounds.
+
 To pick sound banks,
 you'll hold the first button
 (for like a second if that,
@@ -51,17 +52,18 @@ holds are detected quickly),
 let go,
 and then select the bank by pressing or holding a key,
 for nine options.
-In bank-switching mode,
-PRESSING the first button will take you back to the bank you were just on without changing.
-HOLDING the first button selects bank 1 / the default bank,
-PRESSING buttons 2-5 select banks 2-5,
-and HOLDING buttons 2-5 select banks 6-9.
+
+In bank-switching mode:
+* PRESSING the first button will take you back to the bank you were just on without changing.
+* HOLDING the first button selects bank 1 / the default bank,
+* PRESSING buttons 2-5 select banks 2-5,
+* and HOLDING buttons 2-5 select banks 6-9.
 
 In regular mode,
-PRESSING button one will stop the current playback
+* PRESSING button one will stop the current playback
 (well,
 any key will,
 but this also won't play something else),
-HOLDING button one goes into the mode switch,
-PRESSING buttons 2-5 plays sounds 1-4 for this bank,
-and HOLDING buttons 2-5 plays sounds 5-8 for this bank.
+* HOLDING button one goes into the mode switch,
+* PRESSING buttons 2-5 plays sounds 1-4 for this bank,
+* and HOLDING buttons 2-5 plays sounds 5-8 for this bank.
